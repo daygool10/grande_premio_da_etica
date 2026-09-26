@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS, BOARD_SIZE } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { sortFinishers } from '../lib/finishOrder';
 
@@ -9,6 +9,16 @@ export function PlayerFinished() {
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
   const [isFirstFinisher, setIsFirstFinisher] = useState(false);
+  const [confetti] = useState(() =>
+    Array.from({ length: 50 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      top: `-10%`,
+      animationDelay: `${Math.random() * 2}s`,
+      animationDuration: `${2 + Math.random() * 2}s`,
+      backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'][Math.floor(Math.random() * 6)],
+      transform: `rotate(${Math.random() * 360}deg)`,
+    })),
+  );
 
   useEffect(() => {
     loadGameState();
@@ -33,7 +43,7 @@ export function PlayerFinished() {
         currentPlayer,
       ]
     : players;
-  const finishedPlayers = playersWithCurrent.filter(player => player.position >= 10);
+  const finishedPlayers = playersWithCurrent.filter(player => player.position >= BOARD_SIZE);
   const podiumSize = Math.max(1, Math.min(3, playersWithCurrent.length));
   const podiumReady = finishedPlayers.length >= podiumSize && podiumSize > 0;
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
@@ -45,9 +55,9 @@ export function PlayerFinished() {
   }, [orderedFinishers, currentPlayer?.id]);
 
   const sortedPlayers = [...playersWithCurrent].sort((a, b) => {
-    if (a.position >= 10 && b.position >= 10) return 0;
-    if (a.position >= 10) return -1;
-    if (b.position >= 10) return 1;
+    if (a.position >= BOARD_SIZE && b.position >= BOARD_SIZE) return 0;
+    if (a.position >= BOARD_SIZE) return -1;
+    if (b.position >= BOARD_SIZE) return 1;
     return b.position - a.position;
   });
 
@@ -64,22 +74,22 @@ export function PlayerFinished() {
       {/* Confetti Animation */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50">
-          {Array.from({ length: 50 }).map((_, i) => (
+          {confetti.map((piece, i) => (
             <div
               key={i}
               className="absolute animate-confetti"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `-10%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`,
+                left: piece.left,
+                top: piece.top,
+                animationDelay: piece.animationDelay,
+                animationDuration: piece.animationDuration,
               }}
             >
               <div
                 className="w-3 h-3 rounded-sm"
                 style={{
-                  backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'][Math.floor(Math.random() * 6)],
-                  transform: `rotate(${Math.random() * 360}deg)`,
+                  backgroundColor: piece.backgroundColor,
+                  transform: piece.transform,
                 }}
               />
             </div>
