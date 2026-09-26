@@ -411,5 +411,5 @@ export const questions: Question[] = [
   },
 ];
 
-export const BOARD_SIZE = 10;
-export const MAX_TEAMS = 11;
+export const RACE_LENGTH_OPTIONS: readonly number[] = [10, 20, 35];
+export const DEFAULT_RACE_LENGTH = 20;

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { useGameStore } from '../store/GameStore';
+import { useGameStore, activeRaceLength, raceFinishLine } from '../store/GameStore';
 import { TEAM_COLORS } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
+import { CircuitBoard } from './CircuitBoard';
 
 export function PlayerPlaying() {
   const { 
@@ -28,34 +29,6 @@ export function PlayerPlaying() {
     }
   }, [game?.phase, game?.question_revealed, setViewState]);
 
-  useEffect(() => {
-    const lastAnswer = answers
-      .filter(answer => answer.player_id === currentPlayer?.id)
-      .reduce<typeof answers[number] | null>(
-        (latest, answer) => !latest || answer.question_index > latest.question_index ? answer : latest,
-        null,
-      );
-    const finishAnswerRevealed = game?.question_revealed ||
-      game?.phase === 'finished' ||
-      (lastAnswer !== null && game && game.current_question_index > lastAnswer.question_index);
-
-    if (
-      finishAnswerRevealed &&
-      currentPlayer &&
-      currentPlayer.position >= 10
-    ) {
-      setViewState('player_finished');
-    }
-  }, [
-    game?.phase,
-    game?.question_revealed,
-    game?.current_question_index,
-    currentPlayer?.id,
-    currentPlayer?.position,
-    answers,
-    setViewState,
-  ]);
-
   const q = currentQuestion;
 
   if (!q || !currentPlayer) {
@@ -74,9 +47,12 @@ export function PlayerPlaying() {
   );
   const resultMessage = selectedAnswer
     ? selectedAnswer.isCorrect
-      ? `✅ Acertou! Avance ${selectedAnswer.advance} casa${selectedAnswer.advance > 1 ? 's' : ''}!`
-      : `❌ Errou! ${selectedAnswer.penalty || 'Não avance nesta rodada.'}`
+      ? `✅ Acertou! Ganhou ${selectedAnswer.advance} ponto${selectedAnswer.advance > 1 ? 's' : ''}!`
+      : `❌ Errou! ${selectedAnswer.penalty || 'Não pontue nesta rodada.'}`
     : '';
+
+  const raceLength = activeRaceLength(game);
+  const finishLine = raceFinishLine(game);
 
   if (currentPlayer.skipped_turn && !hasAnsweredCurrentQuestion) {
     return (
@@ -117,9 +93,14 @@ export function PlayerPlaying() {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-400">Pergunta {(game?.current_question_index || 0) + 1}</p>
-            <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/10</p>
+            <p className="text-sm text-gray-400">Pergunta {(game?.current_question_index || 0) + 1}/{raceLength}</p>
+            <p className="text-xs text-gray-500">Pontos: {currentPlayer.position}/{finishLine}</p>
           </div>
+        </div>
+
+        {/* Board */}
+        <div className="mb-4 overflow-hidden rounded-2xl border border-gray-600 shadow-xl">
+          <CircuitBoard players={players} finishLine={finishLine} highlightPlayerId={currentPlayer.id} />
         </div>
 
         {/* Question */}

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { TeamPin } from './TeamPin';
 
 interface CircuitBoardPlayer {
@@ -9,32 +10,75 @@ interface CircuitBoardPlayer {
 
 interface CircuitBoardProps {
   players: CircuitBoardPlayer[];
-  boardSize: number;
+  finishLine: number;
+  highlightPlayerId?: string;
 }
 
-const TRACK_POSITIONS = [
-  { left: '14%', top: '22%' },
-  { left: '35%', top: '22%' },
-  { left: '60%', top: '22%' },
-  { left: '84%', top: '22%' },
-  { left: '84%', top: '57%' },
-  { left: '60%', top: '57%' },
-  { left: '35%', top: '57%' },
-  { left: '20%', top: '57%' },
-  { left: '20%', top: '86%' },
-  { left: '50%', top: '86%' },
-  { left: '82%', top: '86%' },
-];
+const CAR_OFFSET_PX = 18;
 
-export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
-  const positions = Array.from({ length: boardSize + 1 }, (_, position) => {
-    const point = TRACK_POSITIONS[position];
-    if (!point) {
-      throw new Error(`No circuit coordinate configured for board position ${position}`);
+interface PlacedCar {
+  player: CircuitBoardPlayer;
+  left: string;
+  top: string;
+  isHighlighted: boolean;
+}
+
+const TRACK_PATH =
+  'M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980';
+
+function tangentAt(path: SVGPathElement, pathLength: number, fraction: number): { x: number; y: number } {
+  const near = path.getPointAtLength(Math.max(0, fraction - 0.001) * pathLength);
+  const far = path.getPointAtLength(Math.min(1, fraction + 0.001) * pathLength);
+  return { x: far.x - near.x, y: far.y - near.y };
+}
+
+export function CircuitBoard({ players, finishLine, highlightPlayerId }: CircuitBoardProps) {
+  const trackRef = useRef<SVGPathElement | null>(null);
+  const [pathLength, setPathLength] = useState(0);
+
+  useLayoutEffect(() => {
+    const path = trackRef.current;
+    if (path) setPathLength(path.getTotalLength());
+  }, []);
+
+  const carPositions = useMemo<PlacedCar[]>(() => {
+    const path = trackRef.current;
+    if (!path || finishLine <= 0 || pathLength <= 0) {
+      return [];
     }
 
-    return { position, ...point };
-  });
+    const grouped = new Map<number, CircuitBoardPlayer[]>();
+    for (const player of players) {
+      const fraction = Math.min(1, Math.max(0, player.position / finishLine));
+      const bucket = grouped.get(fraction) ?? [];
+      bucket.push(player);
+      grouped.set(fraction, bucket);
+    }
+
+    const placed: PlacedCar[] = [];
+    for (const [fraction, bucket] of grouped) {
+      const point = path.getPointAtLength(fraction * pathLength);
+      const tangent = tangentAt(path, pathLength, fraction);
+      const tangentLength = Math.hypot(tangent.x, tangent.y);
+      const normal =
+        tangentLength === 0
+          ? { x: 0, y: 1 }
+          : { x: -tangent.y / tangentLength, y: tangent.x / tangentLength };
+
+      bucket.forEach((player, index) => {
+        const lateral = (index - (bucket.length - 1) / 2) * CAR_OFFSET_PX;
+        const x = (point.x + normal.x * lateral) / 1100;
+        const y = (point.y + normal.y * lateral) / 440;
+        placed.push({
+          player,
+          left: `${x * 100}%`,
+          top: `${y * 100}%`,
+          isHighlighted: player.id === highlightPlayerId,
+        });
+      });
+    }
+    return placed;
+  }, [players, finishLine, pathLength, highlightPlayerId]);
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
@@ -53,7 +97,8 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           </defs>
           <rect width="1100" height="440" fill="#15352b" />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            ref={trackRef}
+            d={TRACK_PATH}
             fill="none"
             stroke="#d1d5db"
             strokeWidth="78"
@@ -61,7 +106,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            d={TRACK_PATH}
             fill="none"
             stroke="#343b46"
             strokeWidth="68"
@@ -69,7 +114,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            d={TRACK_PATH}
             fill="none"
             stroke="#9ca3af"
             strokeWidth="2"
@@ -84,56 +129,21 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           </text>
         </svg>
 
-        <div
-          className="absolute left-[11%] top-[22%] z-20 grid grid-cols-3 gap-0"
-          aria-label="Carros alinhados atrás da linha de largada"
-        >
-          {players
-            .filter((player) => player.position === 0)
-            .map((player) => (
-              <span
-                key={player.id}
-                className="flex h-6 w-6 items-center justify-center"
-                title={`${player.team_name} — ${player.f1_team}`}
-              >
-                <TeamPin team={player.f1_team} className="h-5 w-5 text-[7px]" />
-                <span className="sr-only">{player.team_name} — {player.f1_team}</span>
-              </span>
-            ))}
-        </div>
-
-        {positions.filter(({ position }) => position !== 0).map(({ position, left, top }) => {
-          const teamsAtPosition = players.filter((player) => player.position === position);
-
-          return (
-            <div
-              key={position}
-              className="absolute z-10 flex w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-              style={{ left, top }}
-              title={
-                teamsAtPosition.length > 0
-                  ? teamsAtPosition.map((player) => `${player.team_name} (${player.f1_team})`).join(', ')
-                  : `Casa ${position}`
-              }
-            >
-              {teamsAtPosition.length > 0 && (
-                <div className="grid w-full grid-cols-3 justify-items-center gap-0">
-                  {teamsAtPosition.map((player) => (
-                    <span
-                      key={player.id}
-                      className="flex h-6 w-6 items-center justify-center"
-                      title={`${player.team_name} — ${player.f1_team}`}
-                    >
-                      <TeamPin team={player.f1_team} className="h-5 w-5 text-[7px]" />
-                      <span className="sr-only">{player.team_name} — {player.f1_team}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
+        {carPositions.map(({ player, left, top, isHighlighted }) => (
+          <div
+            key={player.id}
+            className={`absolute z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center ${
+              isHighlighted
+                ? 'rounded-full ring-2 ring-yellow-300 shadow-[0_0_10px_2px_rgba(253,224,71,0.6)]'
+                : ''
+            }`}
+            style={{ left, top }}
+            title={`${player.team_name} — ${player.f1_team}`}
+          >
+            <TeamPin team={player.f1_team} className="h-5 w-5 text-[7px]" />
+            <span className="sr-only">{player.team_name} — {player.f1_team}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
