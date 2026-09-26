@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { questions, BOARD_SIZE } from '../data/questions';
+import { questions, BOARD_SIZE, createQuestionOrder, getQuestionAt } from '../data/questions';
 
 interface Player {
   id: string;
@@ -17,6 +17,7 @@ interface Game {
   game_code: string;
   admin_id: string;
   current_question_index: number;
+  question_order?: number[] | null;
   phase: string;
   question_revealed: boolean;
 }
@@ -91,6 +92,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   createGame: async () => {
     const gameCode = generateGameCode();
     const adminId = Math.random().toString(36).substring(7);
+    const questionOrder = createQuestionOrder();
     
     const { data: game, error } = await supabase
       .from('games')
@@ -99,6 +101,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         admin_id: adminId,
         phase: 'waiting',
         current_question_index: 0,
+        question_order: questionOrder,
         question_revealed: false,
       })
       .select()
@@ -221,7 +224,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game, players: cachedPlayers } = get();
     if (!game || game.question_revealed) return;
 
-    const question = questions[game.current_question_index];
+    const question = getQuestionAt(game.current_question_index, game.question_order);
     if (!question) {
       throw new Error(`Question ${game.current_question_index} was not found.`);
     }
@@ -350,7 +353,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       .update({
         current_question_index: nextIndex,
         question_revealed: false,
-        phase: nextIndex >= questions.length ? 'finished' : 'question',
+        phase: nextIndex >= (game.question_order?.length ?? questions.length) ? 'finished' : 'question',
       })
       .eq('id', game.id)
       .eq('current_question_index', game.current_question_index)
@@ -497,7 +500,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (updatedGame) {
-      const q = questions[updatedGame.current_question_index] || null;
+      const q = getQuestionAt(
+        updatedGame.current_question_index,
+        updatedGame.question_order,
+      );
       set({ currentQuestion: q });
 
       if (currentPlayer) {

@@ -89,3 +89,36 @@ body {
 .animate-bounce {
   animation: bounce 1s ease-in-out infinite;
 }
+
+@keyframes softTireRoll {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(180deg);
+  }
+}
+
+.waiting-soft-tire {
+  animation: softTireRoll 1.2s linear infinite;
+}
+
+.waiting-soft-tire-exit {
+  animation: softTireExit 950ms cubic-bezier(0.35, 0, 0.8, 0.3) forwards;
+}
+
+@keyframes softTireExit {
+  from {
+    transform: translateX(0) rotate(0deg);
+  }
+  to {
+    transform: translateX(110vw) rotate(1080deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-soft-tire,
+  .waiting-soft-tire-exit {
+    animation: none;
+  }
+}

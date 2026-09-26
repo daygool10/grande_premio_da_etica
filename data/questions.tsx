@@ -18,9 +18,9 @@ export const F1_TEAMS = [
 
 export const TEAM_COLORS: Record<string, string> = {
   'McLaren': '#FF8000', 'Ferrari': '#E80020', 'Red Bull': '#3671C6',
-  'Mercedes': '#27F4D2', 'Aston Martin': '#229971', 'Williams': '#64C4FF',
+  'Mercedes': '#09bb9d', 'Aston Martin': '#229971', 'Williams': '#64C4FF',
   'Visa Cash App': '#6692FF', 'Alpine': '#FF87BC', 'Audi': '#C0C0C0',
-  'Cadillac': '#00594F', 'Haas': '#B6BABD',
+  'Cadillac': '#ccbf0d', 'Haas': '#B6BABD',
 };
 
 export const questions: Question[] = [
@@ -410,6 +410,34 @@ export const questions: Question[] = [
     ],
   },
 ];
+
+export function createQuestionOrder(): number[] {
+  const shuffledQuestions = [...questions];
+
+  for (let index = shuffledQuestions.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffledQuestions[index], shuffledQuestions[randomIndex]] = [
+      shuffledQuestions[randomIndex],
+      shuffledQuestions[index],
+    ];
+  }
+
+  return shuffledQuestions.map((question) => question.id);
+}
+
+export function getQuestionAt(
+  questionIndex: number,
+  questionOrder?: readonly number[] | null,
+): Question | null {
+  if (!Number.isInteger(questionIndex) || questionIndex < 0) return null;
+
+  if (!questionOrder) {
+    return questions[questionIndex] ?? null;
+  }
+
+  const questionId = questionOrder[questionIndex];
+  return questions.find((question) => question.id === questionId) ?? null;
+}
 
 export const BOARD_SIZE = 10;
 export const MAX_TEAMS = 11;

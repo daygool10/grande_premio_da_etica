@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS, BOARD_SIZE, questions } from '../data/questions';
+import { TEAM_COLORS, BOARD_SIZE, questions, getQuestionAt } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 import { sortFinishers } from '../lib/finishOrder';
@@ -23,7 +23,10 @@ export function AdminPlaying() {
     }
   }, [game?.phase, setViewState]);
 
-  const q = currentQuestion || questions[game?.current_question_index || 0];
+  const q = currentQuestion || getQuestionAt(
+    game?.current_question_index || 0,
+    game?.question_order,
+  );
 
   const eligiblePlayers = players.filter(
     (player) => !player.skipped_turn && player.position < BOARD_SIZE,
