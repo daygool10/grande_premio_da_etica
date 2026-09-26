@@ -17,6 +17,7 @@ export type Database = {
           current_question_index: number;
           phase: string;
           question_revealed: boolean;
+          race_length?: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -27,6 +28,7 @@ export type Database = {
           current_question_index: number;
           phase: string;
           question_revealed: boolean;
+          race_length?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -37,6 +39,7 @@ export type Database = {
           current_question_index: number;
           phase: string;
           question_revealed: boolean;
+          race_length?: number;
           created_at: string;
           updated_at: string;
         }>;

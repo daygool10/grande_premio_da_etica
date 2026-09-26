@@ -14,8 +14,12 @@ export function PlayerJoin() {
       return;
     }
     setError('');
-    const joined = await joinGame(normalized);
-    if (!joined) {
+    const result = await joinGame(normalized);
+    if (result.status === 'error') {
+      setError('Não foi possível conectar ao servidor. Tente novamente.');
+      return;
+    }
+    if (result.status === 'not_found') {
       setError('Partida não encontrada. Confira o código e tente novamente.');
       return;
     }
