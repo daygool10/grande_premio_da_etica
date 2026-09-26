@@ -49,5 +49,5 @@ McLaren, Ferrari, Red Bull, Mercedes, Aston Martin, Williams, Visa Cash App, Alp
 ## Build
 ```bash
 npm install
-npm run build
+npm run dev
 ```
