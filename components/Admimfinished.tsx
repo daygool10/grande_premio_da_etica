@@ -1,7 +1,6 @@
-import React from 'react';
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS, BOARD_SIZE } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { sortFinishers } from '../lib/finishOrder';
 import { F1Semaphore } from './F1Semaphore';
@@ -20,7 +19,7 @@ export function AdminFinished() {
     };
   }, [loadGameState]);
 
-  const finishedPlayers = players.filter(player => player.position >= 10);
+  const finishedPlayers = players.filter(player => player.position >= BOARD_SIZE);
   const podiumSize = Math.max(1, Math.min(3, players.length));
   const podiumReady = finishedPlayers.length >= podiumSize;
 
@@ -28,7 +27,7 @@ export function AdminFinished() {
   const sortedPlayers = [
     ...orderedFinishers,
     ...players
-      .filter(player => player.position < 10)
+      .filter(player => player.position < BOARD_SIZE)
       .sort((a, b) => b.position - a.position),
   ];
   const podium = orderedFinishers.slice(0, 3);
@@ -147,7 +146,7 @@ export function AdminFinished() {
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
                   <span className="font-bold flex-1 text-left">{p.team_name}</span>
                   <span className="text-gray-400 text-sm">{p.f1_team}</span>
-                  <span className="text-sm font-bold">{p.position}/10</span>
+                  <span className="text-sm font-bold">{p.position}/{BOARD_SIZE}</span>
                 </div>
               ))}
             </div>

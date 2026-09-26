@@ -189,7 +189,7 @@ export function AdminPlaying() {
                         <p className="text-gray-400 text-xs">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold">{p.position}/10</p>
+                        <p className="text-sm font-bold">{p.position}/{BOARD_SIZE}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>

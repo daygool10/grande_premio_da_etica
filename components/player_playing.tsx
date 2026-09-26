@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS, BOARD_SIZE } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 
 export function PlayerPlaying() {
@@ -42,7 +42,7 @@ export function PlayerPlaying() {
     if (
       finishAnswerRevealed &&
       currentPlayer &&
-      currentPlayer.position >= 10
+      currentPlayer.position >= BOARD_SIZE
     ) {
       setViewState('player_finished');
     }
@@ -118,7 +118,7 @@ export function PlayerPlaying() {
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-400">Pergunta {(game?.current_question_index || 0) + 1}</p>
-            <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/10</p>
+            <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/{BOARD_SIZE}</p>
           </div>
         </div>
 
