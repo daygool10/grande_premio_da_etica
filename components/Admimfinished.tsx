@@ -104,7 +104,6 @@ export function AdminFinished() {
                   <div className="w-28 h-36 bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-t-xl flex items-center justify-center relative">
                     <span className="text-6xl font-black text-white">1</span>
                     <div className="absolute top-2 text-yellow-800 text-xs font-bold">P1</div>
-                    <div className="absolute -top-4 text-3xl">👑</div>
                   </div>
                 </div>
               )}

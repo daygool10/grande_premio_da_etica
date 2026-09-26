@@ -8,7 +8,6 @@ export function PlayerFinished() {
   const { players, currentPlayer, answers, loadGameState } = useGameStore();
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
-  const [isFirstFinisher, setIsFirstFinisher] = useState(false);
 
   useEffect(() => {
     loadGameState();
@@ -38,12 +37,6 @@ export function PlayerFinished() {
   const podiumReady = finishedPlayers.length >= podiumSize && podiumSize > 0;
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
 
-  useEffect(() => {
-    if (orderedFinishers[0]?.id === currentPlayer?.id) {
-      setIsFirstFinisher(true);
-    }
-  }, [orderedFinishers, currentPlayer?.id]);
-
   const sortedPlayers = [...playersWithCurrent].sort((a, b) => {
     if (a.position >= 10 && b.position >= 10) return 0;
     if (a.position >= 10) return -1;
@@ -51,11 +44,15 @@ export function PlayerFinished() {
     return b.position - a.position;
   });
 
-  const myPosition = isFirstFinisher
+  const currentFinishPosition = orderedFinishers.findIndex(
+    player => player.id === currentPlayer?.id,
+  ) + 1;
+  const myPosition = currentFinishPosition === 1
     ? 1
-    : podiumReady
-      ? finishedPlayers.findIndex(player => player.id === currentPlayer?.id) + 1
+    : podiumReady && currentFinishPosition > 1
+      ? currentFinishPosition
       : null;
+  const isFirstFinisher = myPosition === 1;
   const podium = orderedFinishers.slice(0, 3);
   const remainingFinishers = Math.max(0, podiumSize - finishedPlayers.length);
 
@@ -163,7 +160,6 @@ export function PlayerFinished() {
                   <div className="w-28 h-36 bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-t-xl flex items-center justify-center relative">
                     <span className="text-6xl font-black text-white">1</span>
                     <div className="absolute top-2 text-yellow-800 text-xs font-bold">P1</div>
-                    <div className="absolute -top-4 text-3xl">👑</div>
                   </div>
                 </div>
               )}

@@ -23,7 +23,7 @@ const TRACK_POSITIONS = [
   { left: '20%', top: '57%' },
   { left: '20%', top: '86%' },
   { left: '50%', top: '86%' },
-  { left: '82%', top: '86%' },
+  { left: '96%', top: '86%' },
 ];
 
 export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
@@ -43,7 +43,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full"
+          className="absolute inset-0 z-0 h-full w-full"
         >
           <defs>
             <pattern id="circuit-checkers" width="12" height="12" patternUnits="userSpaceOnUse">
@@ -108,7 +108,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           return (
             <div
               key={position}
-              className="absolute z-10 flex w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+              className="absolute z-30 flex w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
               style={{ left, top }}
               title={
                 teamsAtPosition.length > 0

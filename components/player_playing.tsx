@@ -80,8 +80,15 @@ export function PlayerPlaying() {
 
   if (currentPlayer.skipped_turn && !hasAnsweredCurrentQuestion) {
     return (
-      <div className="min-h-screen bg-[#1a1a2e] p-4">
-        <div className="mx-auto flex min-h-[80vh] max-w-2xl flex-col items-center justify-center text-center">
+      <div className="relative isolate flex min-h-screen items-center justify-center overflow-y-auto bg-[#1a1a2e] p-4">
+        <img
+          src="/player-question-background.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
+        />
+        <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+        <div className="relative z-10 mx-auto flex min-h-[80vh] max-w-2xl flex-col items-center justify-center text-center">
           <div
             className="mb-5 flex h-16 w-16 items-center justify-center rounded-full"
             style={{ backgroundColor: TEAM_COLORS[currentPlayer.f1_team] }}
@@ -100,8 +107,15 @@ export function PlayerPlaying() {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-[#1a1a2e]">
-      <div className="max-w-2xl mx-auto">
+    <div className="relative isolate min-h-screen overflow-hidden bg-[#1a1a2e] p-4">
+      <img
+        src="/player-question-background.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
+      />
+      <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+      <div className="relative z-10 mx-auto w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -124,10 +138,10 @@ export function PlayerPlaying() {
 
         {/* Question */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-5 mb-4">
-          <h3 className="text-red-400 font-bold mb-2 text-sm uppercase tracking-wider">
+          <h3 className="text-red-400 font-bold mb-3 text-base uppercase tracking-wider sm:text-lg">
             📋 {q.title}
           </h3>
-          <p className="text-gray-300 leading-relaxed text-sm">
+          <p className="text-gray-300 leading-relaxed text-base sm:text-lg">
             {q.scenario}
           </p>
         </div>
@@ -154,7 +168,7 @@ export function PlayerPlaying() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0 ${
                   selectedOption === i
                     ? 'bg-red-600 text-white'
                     : 'bg-gray-600 text-gray-300'
@@ -162,7 +176,7 @@ export function PlayerPlaying() {
                   {String.fromCharCode(65 + i)}
                 </span>
                 <div className="flex-1">
-                  <p className="text-sm text-gray-200">{opt.text}</p>
+                  <p className="text-base leading-relaxed text-gray-200 sm:text-lg">{opt.text}</p>
                 </div>
                 {game?.question_revealed && hasAnswered && opt.isCorrect && (
                   <span className="text-green-400 text-xl">✓</span>
