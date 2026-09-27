@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { DEFAULT_RACE_LENGTH } from '../data/questions';
+import { writeSeat } from '../lib/seat';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
 function generateGameCode(): string {
@@ -38,6 +39,7 @@ export function createLobbyActions(set: GameStoreSet, get: GameStoreGet): Pick<G
     }
 
     set({ game: { ...game, race_length: game.race_length ?? DEFAULT_RACE_LENGTH }, viewState: 'admin_game_code' });
+    writeSeat({ role: 'admin', gameId: game.id, gameCode: game.game_code, playerId: null });
   },
 
   joinGame: async (gameCode: string) => {
@@ -120,6 +122,7 @@ export function createLobbyActions(set: GameStoreSet, get: GameStoreGet): Pick<G
     }
 
     set({ currentPlayer: player, viewState: 'player_waiting' });
+    writeSeat({ role: 'player', gameId: game.id, gameCode: game.game_code, playerId: player.id });
     return 'success';
   },
 

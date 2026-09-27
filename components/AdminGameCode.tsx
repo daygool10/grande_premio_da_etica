@@ -1,4 +1,5 @@
 import { useGameStore } from '../store/GameStore';
+import { clearSeat } from '../lib/seat';
 
 export function AdminGameCode() {
   const { game, setViewState } = useGameStore();
@@ -8,6 +9,7 @@ export function AdminGameCode() {
   };
 
   const handleBackToStart = () => {
+    clearSeat();
     setViewState('start');
   };
 

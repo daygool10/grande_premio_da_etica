@@ -1,9 +1,16 @@
 import { supabase } from '../lib/supabase';
 import { questions } from '../data/questions';
 import { raceFinishLine } from './raceProgress';
+import { readSeat, clearSeat } from '../lib/seat';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
-export function createSyncActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'startGame' | 'loadGameState' | 'subscribeToGame'> {
+const VIEW_BY_PHASE: Record<string, Record<'admin' | 'player', GameStore['viewState']>> = {
+  waiting: { admin: 'admin_waiting', player: 'player_waiting' },
+  question: { admin: 'admin_playing', player: 'player_playing' },
+  finished: { admin: 'admin_finished', player: 'player_finished' },
+};
+
+export function createSyncActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'startGame' | 'loadGameState' | 'subscribeToGame' | 'restoreSeat'> {
   return {
   startGame: async () => {
     const { game } = get();
@@ -130,6 +137,58 @@ export function createSyncActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
     return () => {
       supabase.removeChannel(gameChannel);
     };
+  },
+
+  restoreSeat: async () => {
+    const seat = readSeat();
+    if (!seat) return false;
+
+    try {
+      const { data: game, error: gameError } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', seat.gameId)
+        .maybeSingle();
+
+      if (gameError) {
+        console.error('Error fetching game for seat restore:', gameError);
+        return false;
+      }
+
+      if (!game) {
+        clearSeat();
+        return false;
+      }
+
+      let currentPlayer: GameStore['currentPlayer'] = null;
+      if (seat.role === 'player') {
+        if (!seat.playerId) {
+          clearSeat();
+          return false;
+        }
+        const { data: player, error: playerError } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', seat.playerId)
+          .maybeSingle();
+        if (playerError) {
+          console.error('Error fetching player for seat restore:', playerError);
+          return false;
+        }
+        if (!player) {
+          clearSeat();
+          return false;
+        }
+        currentPlayer = player;
+      }
+
+      const phaseView = VIEW_BY_PHASE[game.phase] ?? { admin: 'admin_waiting', player: 'player_waiting' };
+      set({ game, currentPlayer, viewState: phaseView[seat.role] });
+      return true;
+    } catch (error) {
+      console.error('Unexpected error during seat restore:', error);
+      return false;
+    }
   },
 
   };

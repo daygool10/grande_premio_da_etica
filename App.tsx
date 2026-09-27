@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from './store/GameStore';
 import { AdminGameCode } from './components/AdminGameCode';
 import { AdminWaiting } from './components/AdminWaiting';
@@ -14,7 +14,14 @@ import { StartScreen } from './components/StartScreen';
 const FALLBACK_POLL_MS = 10000;
 
 export default function App() {
-  const { viewState, game, subscribeToGame, loadGameState } = useGameStore();
+  const { viewState, game, subscribeToGame, loadGameState, restoreSeat } = useGameStore();
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  useEffect(() => {
+    restoreSeat()
+      .catch((error) => { console.error('Seat restore failed:', error); })
+      .finally(() => setIsRestoring(false));
+  }, [restoreSeat]);
 
   useEffect(() => {
     if (!game) return;
@@ -30,6 +37,14 @@ export default function App() {
     const interval = setInterval(loadGameState, FALLBACK_POLL_MS);
     return () => clearInterval(interval);
   }, [game?.id, loadGameState]);
+
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400 animate-pulse">Carregando...</div>
+      </div>
+    );
+  }
 
   switch (viewState) {
     case 'admin_game_code': return <AdminGameCode />;

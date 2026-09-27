@@ -4,9 +4,10 @@ import { raceFinishLine } from '../store/raceProgress';
 import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
+import { clearSeat } from '../lib/seat';
 
 export function PlayerFinished() {
-  const { players, currentPlayer, answers, game, loadGameState } = useGameStore();
+  const { players, currentPlayer, answers, game, loadGameState, setViewState } = useGameStore();
   const [showPodium, setShowPodium] = useState(false);
 
   useEffect(() => {
@@ -147,6 +148,13 @@ export function PlayerFinished() {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={() => { clearSeat(); setViewState('start'); }}
+          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold py-3 px-8 rounded-xl text-lg transition-all"
+        >
+          Voltar ao início
+        </button>
       </div>
     </div>
   );

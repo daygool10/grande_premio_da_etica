@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
+import { clearSeat } from '../lib/seat';
 
 export function PlayerJoin() {
   const [code, setCode] = useState('');
@@ -35,7 +36,7 @@ export function PlayerJoin() {
         <input value={code} onChange={(e) => { setCode(e.target.value.replace(/[^a-z0-9]/gi, '').slice(0, 6)); setError(''); }} autoFocus aria-label="Código da partida" placeholder="ABC123" className="mb-3 w-full rounded-xl border border-gray-600 bg-gray-800 px-4 py-4 text-center font-mono text-3xl font-bold uppercase tracking-[0.3em] text-white outline-none focus:border-red-500" />
         {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
         <button type="submit" className="w-full rounded-xl bg-red-600 px-8 py-4 text-lg font-bold text-white transition hover:bg-red-500">Continuar</button>
-        <button type="button" onClick={() => setViewState('start')} className="mt-4 text-sm text-gray-400 hover:text-white">Voltar</button>
+        <button type="button" onClick={() => { clearSeat(); setViewState('start'); }} className="mt-4 text-sm text-gray-400 hover:text-white">Voltar</button>
       </form>
     </main>
   );

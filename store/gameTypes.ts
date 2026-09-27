@@ -39,6 +39,7 @@ export interface GameStore {
   startGame: () => Promise<void>;
   subscribeToGame: () => () => void;
   loadGameState: () => Promise<void>;
+  restoreSeat: () => Promise<boolean>;
 }
 
 export type GameStoreSet = (partial: Partial<GameStore>) => void;

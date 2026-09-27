@@ -5,6 +5,7 @@ import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
 import { F1Semaphore } from './F1Semaphore';
+import { clearSeat } from '../lib/seat';
 
 export function AdminFinished() {
   const { players, answers, game, loadGameState, setViewState } = useGameStore();
@@ -131,7 +132,7 @@ export function AdminFinished() {
         </div>
 
         <button
-          onClick={() => setViewState('start')}
+          onClick={() => { clearSeat(); setViewState('start'); }}
           className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold py-3 px-8 rounded-xl text-lg transition-all"
         >
           🏁 Nova Partida
