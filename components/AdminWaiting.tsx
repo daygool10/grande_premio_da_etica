@@ -17,8 +17,6 @@ export function AdminWaiting() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 2000);
-    return () => clearInterval(interval);
   }, [loadGameState]);
 
   const handleStart = async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, raceFinishLine } from '../store/GameStore';
+import { useGameStore } from '../store/GameStore';
+import { raceFinishLine } from '../store/raceProgress';
 import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
@@ -10,14 +11,8 @@ export function PlayerFinished() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 3000);
-
     const timer = setTimeout(() => setShowPodium(true), 2000);
-    
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, [loadGameState]);
 
   const playersWithCurrent = currentPlayer

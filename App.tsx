@@ -11,13 +11,25 @@ import { PlayerPlaying } from './components/PlayerPlaying';
 import { PlayerFinished } from './components/PlayerFinished';
 import { StartScreen } from './components/StartScreen';
 
+const FALLBACK_POLL_MS = 10000;
+
 export default function App() {
-  const { viewState, game, subscribeToGame } = useGameStore();
+  const { viewState, game, subscribeToGame, loadGameState } = useGameStore();
 
   useEffect(() => {
     if (!game) return;
     return subscribeToGame();
   }, [game?.id, subscribeToGame]);
+
+  // Realtime is the primary update path. This single slow poller is a safety net for
+  // the case where the Realtime socket drops or the table is not published to Realtime:
+  // without it a player would silently stop receiving new questions.
+  useEffect(() => {
+    if (!game?.id) return;
+    loadGameState();
+    const interval = setInterval(loadGameState, FALLBACK_POLL_MS);
+    return () => clearInterval(interval);
+  }, [game?.id, loadGameState]);
 
   switch (viewState) {
     case 'admin_game_code': return <AdminGameCode />;

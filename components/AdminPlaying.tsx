@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useGameStore, activeRaceLength, raceFinishLine } from '../store/GameStore';
+import { useGameStore } from '../store/GameStore';
+import { activeRaceLength, raceFinishLine } from '../store/raceProgress';
 import { TEAM_COLORS } from '../lib/teams';
 import { questions } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
@@ -14,8 +15,6 @@ export function AdminPlaying() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 1500);
-    return () => clearInterval(interval);
   }, [loadGameState]);
 
   useEffect(() => {
