@@ -16,7 +16,7 @@ export function PlayerJoin() {
     setError('');
     const joined = await joinGame(normalized);
     if (!joined) {
-      setError('Partida não encontrada. Confira o código e tente novamente.');
+      setError('Partida não encontrada ou já iniciada. Confira o código ou escolha uma sala que ainda esteja aguardando jogadores.');
       return;
     }
     setViewState('player_setup');

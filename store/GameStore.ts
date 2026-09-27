@@ -38,7 +38,7 @@ interface Answer {
 }
 
 type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
-type SetupPlayerResult = 'success' | 'team_taken' | 'error';
+type SetupPlayerResult = 'success' | 'team_taken' | 'game_started' | 'error';
 
 interface GameStore {
   viewState: ViewState;
@@ -75,6 +75,13 @@ function generateGameCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+}
+
+function isSameGameSnapshot(current: Game | null, snapshot: Game): boolean {
+  return current?.id === snapshot.id &&
+    current.current_question_index === snapshot.current_question_index &&
+    current.phase === snapshot.phase &&
+    current.question_revealed === snapshot.question_revealed;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -127,7 +134,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       .eq('game_code', gameCode.toUpperCase())
       .single();
 
-    if (error || !games) {
+    if (error || !games || games.phase !== 'waiting') {
       return false;
     }
 
@@ -138,6 +145,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setupPlayer: async (teamName: string, f1Team: string) => {
     const { game } = get();
     if (!game) return 'error';
+
+    const { data: latestGame, error: gameError } = await supabase
+      .from('games')
+      .select('phase')
+      .eq('id', game.id)
+      .maybeSingle();
+
+    if (gameError) {
+      console.error('Error checking game phase:', gameError);
+      return 'error';
+    }
+    if (!latestGame || latestGame.phase !== 'waiting') return 'game_started';
 
     const { data: existingPlayers, error: lookupError } = await supabase
       .from('players')
@@ -171,6 +190,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (error) {
       console.error('Error creating player:', error);
+      if (error.code === 'P0001') return 'game_started';
       if (error.code === '23505') {
         await get().loadGameState();
         return 'team_taken';
@@ -408,57 +428,69 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
 
-    await supabase
+    const { data: startedGame, error } = await supabase
       .from('games')
       .update({ phase: 'question' })
-      .eq('id', game.id);
+      .eq('id', game.id)
+      .eq('phase', 'waiting')
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    if (startedGame) {
+      set({ game: startedGame });
+    } else {
+      await get().loadGameState();
+    }
   },
 
   loadGameState: async () => {
     const { game, currentPlayer } = get();
     if (!game) return;
 
-    const { data: updatedGame } = await supabase
+    const { data: updatedGame, error: gameError } = await supabase
       .from('games')
       .select('*')
       .eq('id', game.id)
       .single();
 
-    if (updatedGame) {
-      const latestGame = get().game;
-      if (
-        latestGame?.id !== game.id ||
-        updatedGame.current_question_index < latestGame.current_question_index ||
-        (
-          updatedGame.current_question_index === latestGame.current_question_index &&
-          latestGame.question_revealed &&
-          !updatedGame.question_revealed
-        )
-      ) {
-        return;
-      }
+    if (gameError || !updatedGame) return;
 
-      const isNewQuestion =
-        updatedGame.current_question_index > latestGame.current_question_index;
-      set({
-        game: updatedGame,
-        ...(isNewQuestion
-          ? {
-              hasAnswered: false,
-              selectedOption: null,
-              showResult: false,
-              resultMessage: '',
-              isPenalty: false,
-              penaltyMessage: '',
-            }
-          : {}),
-      });
+    const latestGame = get().game;
+    if (
+      latestGame?.id !== game.id ||
+      updatedGame.current_question_index < latestGame.current_question_index ||
+      (
+        updatedGame.current_question_index === latestGame.current_question_index &&
+        latestGame.question_revealed &&
+        !updatedGame.question_revealed
+      )
+    ) {
+      return;
     }
+
+    const isNewQuestion =
+      updatedGame.current_question_index > latestGame.current_question_index;
+    set({
+      game: updatedGame,
+      ...(isNewQuestion
+        ? {
+            hasAnswered: false,
+            selectedOption: null,
+            showResult: false,
+            resultMessage: '',
+            isPenalty: false,
+            penaltyMessage: '',
+          }
+        : {}),
+    });
 
     const { data: players } = await supabase
       .from('players')
       .select('*')
       .eq('game_id', game.id);
+
+    if (!isSameGameSnapshot(get().game, updatedGame)) return;
 
     if (players) {
       const latestGame = get().game;
@@ -485,6 +517,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         .eq('id', currentPlayer.id)
         .single();
 
+      if (!isSameGameSnapshot(get().game, updatedGame)) return;
+
       if (updatedPlayer) {
         const latestGame = get().game;
         const isAnswerHidden = latestGame?.phase === 'question' && !latestGame.question_revealed;
@@ -501,7 +535,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       .from('answers')
       .select('*')
       .eq('game_id', game.id);
-    
+
+    if (!isSameGameSnapshot(get().game, updatedGame)) return;
+
     if (allAnswers) {
       set({ answers: allAnswers });
     }

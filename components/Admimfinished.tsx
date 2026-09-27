@@ -24,7 +24,7 @@ export function AdminFinished() {
 
   const finishedPlayers = players.filter(player => player.position >= boardSize);
   const podiumSize = Math.max(1, Math.min(3, players.length));
-  const podiumReady = finishedPlayers.length >= podiumSize;
+  const podiumReady = game?.phase === 'finished' || finishedPlayers.length >= podiumSize;
 
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
   const sortedPlayers = [

@@ -9,7 +9,7 @@ export function PlayerSetup() {
   const [error, setError] = useState('');
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setupPlayer, players, loadGameState } = useGameStore();
+  const { setupPlayer, players, loadGameState, setViewState } = useGameStore();
 
   const takenTeams = new Set(players.map(p => p.f1_team));
 
@@ -43,6 +43,8 @@ export function PlayerSetup() {
       if (result === 'team_taken') {
         setSelectedTeam(null);
         setError('Outra dupla acabou de escolher esta equipe. Selecione outra.');
+      } else if (result === 'game_started') {
+        setError('Esta partida já começou. Digite o código de uma sala que ainda esteja aguardando jogadores.');
       } else if (result === 'error') {
         setError('Não foi possível entrar na partida. Tente novamente.');
       }
@@ -131,6 +133,13 @@ export function PlayerSetup() {
           className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:from-gray-600 disabled:to-gray-700 disabled:hover:scale-100 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl text-2xl transition-all duration-300 transform hover:scale-105"
         >
           {isSubmitting ? 'Entrando...' : '🏎️ Entrar na Corrida'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewState('player_join')}
+          className="mt-4 w-full rounded-xl border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+        >
+          Voltar à entrada de código
         </button>
       </div>
     </div>

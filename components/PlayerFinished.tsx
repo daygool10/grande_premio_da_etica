@@ -35,23 +35,25 @@ export function PlayerFinished() {
     : players;
   const finishedPlayers = playersWithCurrent.filter(player => player.position >= boardSize);
   const podiumSize = Math.max(1, Math.min(3, playersWithCurrent.length));
-  const podiumReady = finishedPlayers.length >= podiumSize && podiumSize > 0;
+  const podiumReady = game?.phase === 'finished' || (finishedPlayers.length >= podiumSize && podiumSize > 0);
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
-
-  const sortedPlayers = [...playersWithCurrent].sort((a, b) => {
-    if (a.position >= boardSize && b.position >= boardSize) return 0;
-    if (a.position >= boardSize) return -1;
-    if (b.position >= boardSize) return 1;
-    return b.position - a.position;
-  });
+  const sortedPlayers = [
+    ...orderedFinishers,
+    ...playersWithCurrent
+      .filter(player => player.position < boardSize)
+      .sort((a, b) => b.position - a.position),
+  ];
 
   const currentFinishPosition = orderedFinishers.findIndex(
     player => player.id === currentPlayer?.id,
   ) + 1;
-  const myPosition = currentFinishPosition === 1
-    ? 1
-    : podiumReady && currentFinishPosition > 1
-      ? currentFinishPosition
+  const currentStandingPosition = sortedPlayers.findIndex(
+    player => player.id === currentPlayer?.id,
+  ) + 1;
+  const myPosition = currentFinishPosition > 0
+    ? currentFinishPosition
+    : game?.phase === 'finished' && currentStandingPosition > 0
+      ? currentStandingPosition
       : null;
   const isFirstFinisher = myPosition === 1;
   const podium = orderedFinishers.slice(0, 3);
@@ -97,10 +99,14 @@ export function PlayerFinished() {
           </div>
           
           <h2 className="text-5xl font-black mb-2">
-            <span className="text-yellow-400">CHEGOU!</span>
+            <span className="text-yellow-400">
+              {currentPlayer && currentPlayer.position >= boardSize ? 'CHEGOU!' : 'FIM DA CORRIDA'}
+            </span>
           </h2>
           <p className="text-gray-400 mb-4 text-lg">
-            {currentPlayer?.team_name} cruzou a linha de chegada!
+            {currentPlayer && currentPlayer.position >= boardSize
+              ? `${currentPlayer.team_name} cruzou a linha de chegada!`
+              : `A corrida terminou. ${currentPlayer?.team_name} avançou ${currentPlayer?.position ?? 0} de ${boardSize} casas.`}
           </p>
           
           <div className="inline-block bg-gray-800/50 border border-yellow-500/50 rounded-xl px-8 py-4 mb-8">

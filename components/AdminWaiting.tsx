@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { TEAM_COLORS } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
@@ -6,6 +6,8 @@ import { StartingGrid } from './StartingGrid';
 
 export function AdminWaiting() {
   const { game, players, startGame, setViewState, loadGameState } = useGameStore();
+  const [startError, setStartError] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     loadGameState();
@@ -14,12 +16,18 @@ export function AdminWaiting() {
   }, [loadGameState]);
 
   const handleStart = async () => {
-    if (players.length < 1) {
-      alert('Aguarde pelo menos 1 jogador entrar!');
-      return;
+    if (players.length < 1 || isStarting) return;
+    setStartError('');
+    setIsStarting(true);
+    try {
+      await startGame();
+      setViewState('admin_playing');
+    } catch (error) {
+      console.error('Error starting the game:', error);
+      setStartError('Não foi possível iniciar a corrida. Verifique a conexão e tente novamente.');
+    } finally {
+      setIsStarting(false);
     }
-    await startGame();
-    setViewState('admin_playing');
   };
 
   return (
@@ -92,11 +100,12 @@ export function AdminWaiting() {
 
             <button
               onClick={handleStart}
-              disabled={players.length < 1}
+              disabled={players.length < 1 || isStarting}
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl text-2xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100"
             >
-              🏁 Iniciar Corrida ({players.length} jogador(es))
+              {isStarting ? 'Iniciando...' : `🏁 Iniciar Corrida (${players.length} jogador(es))`}
             </button>
+            {startError && <p role="alert" className="text-center text-sm text-red-300">{startError}</p>}
           </div>
         </div>
       </div>
