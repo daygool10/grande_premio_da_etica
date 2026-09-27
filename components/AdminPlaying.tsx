@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore, activeRaceLength, raceFinishLine } from '../store/GameStore';
-import { TEAM_COLORS, questions } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
+import { questions } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { F1Car } from './F1Car';
 import { F1Semaphore } from './F1Semaphore';
+import { TEAM_COUNT } from '../lib/teams';
 
 interface StartingGridPlayer {
   id: string;
@@ -11,8 +12,6 @@ interface StartingGridPlayer {
 interface StartingGridProps {
   players: StartingGridPlayer[];
 }
-
-const GRID_SIZE = 11;
 
 export function StartingGrid({ players }: StartingGridProps) {
   const [entryOrder, setEntryOrder] = useState<string[]>([]);
@@ -50,14 +49,14 @@ export function StartingGrid({ players }: StartingGridProps) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <span className="shrink-0 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-bold text-gray-100">
-            {Math.min(orderedPlayers.length, GRID_SIZE)}/{GRID_SIZE}
+            {Math.min(orderedPlayers.length, TEAM_COUNT)}/{TEAM_COUNT}
           </span>
           <F1Semaphore status="waiting" />
         </div>
       </div>
 
       <div className="relative grid grid-cols-2 gap-x-5 gap-y-3">
-        {Array.from({ length: GRID_SIZE }, (_, index) => {
+        {Array.from({ length: TEAM_COUNT }, (_, index) => {
           const player = orderedPlayers[index];
           const position = index + 1;
           const isSecondColumn = index % 2 === 1;

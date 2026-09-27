@@ -1,4 +1,4 @@
-import { TEAM_CAR_LIVERIES } from '../lib/teamCarLiveries';
+import { TEAM_CAR_LIVERIES } from '../lib/teams';
 
 interface F1CarProps {
   team: string;

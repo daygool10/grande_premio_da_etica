@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGameStore, activeRaceLength, raceFinishLine } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { CircuitBoard } from './CircuitBoard';
 
