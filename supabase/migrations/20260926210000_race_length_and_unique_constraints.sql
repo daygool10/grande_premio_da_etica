@@ -8,11 +8,13 @@
 -- Apply this in the Supabase SQL editor. It cannot be applied with the anon key,
 -- because the anon key has no DDL rights.
 
--- 1. How many questions the admin chose for this race (10, 20 or 35).
---    The client falls back to 20 when the column is absent or null, so the app
---    keeps working before this migration is applied.
+-- 1. How many questions the admin chose for this race.
+--    The app always writes race_length explicitly when it creates a game, and
+--    falls back to the full question count (data/questions.tsx,
+--    DEFAULT_RACE_LENGTH) whenever the column is null or absent, so the database
+--    deliberately holds no second copy of the question count.
 ALTER TABLE public.games
-  ADD COLUMN IF NOT EXISTS race_length integer NOT NULL DEFAULT 20;
+  ADD COLUMN IF NOT EXISTS race_length integer;
 
 -- 2. One answer per player per question.
 --    Without this, a refresh mid-submit or a second tab inserts a second row, and

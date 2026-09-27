@@ -399,5 +399,8 @@ export const questions: Question[] = [
   },
 ];
 
-export const RACE_LENGTH_OPTIONS: readonly number[] = [10, 20, 35];
-export const DEFAULT_RACE_LENGTH = 20;
+export const DEFAULT_RACE_LENGTH = questions.length;
+export const RACE_LENGTH_OPTIONS: readonly number[] =
+  Array.from(new Set([10, 20, questions.length].filter((option) => option <= questions.length))).sort(
+    (a, b) => a - b,
+  );
