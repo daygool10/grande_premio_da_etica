@@ -37,6 +37,8 @@ As equipes elegíveis recebem a mesma pergunta. Cada pergunta apresenta um caso 
 - A resposta correta só é revelada pelo administrador depois que todas as equipes elegíveis responderem.
 - Equipes que já terminaram não precisam responder às perguntas seguintes.
 - Quando uma equipe perde uma rodada, ela aguarda a próxima pergunta sem responder à rodada atual.
+- A sala de espera considera uma dupla desconectada depois de 90 segundos sem heartbeat. Antes da largada, o administrador pode removê-la; a equipe F1 volta a ficar disponível.
+- A identidade e a partida do jogador ficam salvas no armazenamento local do navegador. Ao retornar no mesmo navegador, escolha retomar a mesma dupla (mantendo posição e respostas) ou, enquanto a sala ainda aguarda a largada, remover a dupla anterior e configurar outra. Depois que a corrida começa, a troca de identidade fica bloqueada para preservar o andamento da partida.
 
 ### 4. Cruzar a linha de chegada
 
@@ -80,6 +82,7 @@ Execute as migrations no projeto Supabase associado à aplicação, pelo Supabas
 - [`20260926140000_unique_f1_team_per_game.sql`](./supabase/migrations/20260926140000_unique_f1_team_per_game.sql): cria uma restrição única por partida e equipe F1, evitando escolhas duplicadas. Antes de executá-la, resolva eventuais duplicatas já existentes.
 - [`20260926203000_random_question_order_per_game.sql`](./supabase/migrations/20260926203000_random_question_order_per_game.sql): adiciona `question_order` à tabela `games` para persistir a sequência de perguntas de cada nova partida.
 - [`20260927120000_players_only_join_waiting_games.sql`](./supabase/migrations/20260927120000_players_only_join_waiting_games.sql): impede, inclusive em uma disputa entre a largada e a entrada de um jogador, que participantes sejam adicionados depois que a partida começou.
+- [`20260927180000_player_presence_and_recovery.sql`](./supabase/migrations/20260927180000_player_presence_and_recovery.sql): adiciona `players.last_seen` e as funções de heartbeat e remoção controlada. Aplique esta migration no Supabase antes de publicar a versão atualizada; não é necessário alterar dados existentes manualmente. A função do administrador só remove uma dupla se a partida ainda estiver aguardando, o heartbeat tiver mais de 90 segundos e o `admin_id` corresponder ao da partida. A remoção também elimina respostas associadas.
 
 Partidas existentes sem `question_order` continuam usando a ordem original das perguntas. A nova seleção aleatória é aplicada às partidas criadas depois da atualização.
 
@@ -112,6 +115,7 @@ Partidas existentes sem `question_order` continuam usando a ordem original das p
 - Classificação de chegada considera a pergunta de conclusão e, em caso de empate, o horário de envio da resposta.
 - Impedimento de selecionar a mesma equipe F1 mais de uma vez na mesma partida.
 - Entrada de jogadores restrita a salas em espera, com validação transacional no banco.
+- Retomada da identidade/partida do jogador pelo mesmo navegador, heartbeat de presença e remoção de participantes realmente offline antes da largada.
 - Resultados finais exibidos mesmo quando menos de três equipes cruzam a linha de chegada.
 - Animações de largada, pit stop, troca de pneus e retorno à pista.
 - Melhorias de legibilidade, tamanhos de fonte, imagens de fundo e layout das telas de espera, entrada e perguntas.

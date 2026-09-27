@@ -5,15 +5,29 @@ import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
 
 export function AdminWaiting() {
-  const { game, players, startGame, setViewState, loadGameState } = useGameStore();
+  const { game, players, startGame, setViewState, loadGameState, removeOfflinePlayer } = useGameStore();
   const [startError, setStartError] = useState('');
   const [isStarting, setIsStarting] = useState(false);
+  const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState('');
 
   useEffect(() => {
     loadGameState();
     const interval = setInterval(loadGameState, 2000);
     return () => clearInterval(interval);
   }, [loadGameState]);
+
+  const handleRemoveOfflinePlayer = async (playerId: string) => {
+    if (removingPlayerId) return;
+    setRemovingPlayerId(playerId);
+    setRemoveError('');
+    try {
+      const removed = await removeOfflinePlayer(playerId);
+      if (!removed) setRemoveError('A equipe voltou a se conectar ou não pôde ser removida. Atualize a lista e tente novamente.');
+    } finally {
+      setRemovingPlayerId(null);
+    }
+  };
 
   const handleStart = async () => {
     if (players.length < 1 || isStarting) return;
@@ -66,29 +80,50 @@ export function AdminWaiting() {
           <div className="space-y-4">
             <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-6 backdrop-blur-sm">
               <h3 className="text-base font-bold text-gray-300 mb-4 uppercase tracking-wider">
-                👥 Equipes Conectadas ({players.length})
+                👥 Duplas na grade ({players.length})
               </h3>
               
               <div className="space-y-3 max-h-80 overflow-y-auto">
-                {players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center gap-3 bg-gray-700/50 rounded-xl p-4 border border-gray-600/30"
-                  >
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-                      style={{ backgroundColor: TEAM_COLORS[player.f1_team] || '#666' }}
+                {players.map((player) => {
+                  const isOffline = !player.last_seen ||
+                    Date.now() - new Date(player.last_seen).getTime() > 90_000;
+                  return (
+                    <div
+                      key={player.id}
+                      className="flex items-center gap-3 bg-gray-700/50 rounded-xl p-4 border border-gray-600/30"
                     >
-                      <TeamLogo team={player.f1_team} />
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+                        style={{ backgroundColor: TEAM_COLORS[player.f1_team] || '#666' }}
+                      >
+                        <TeamLogo team={player.f1_team} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-lg text-white truncate">{player.team_name}</p>
+                        <p className="text-gray-300 text-base">{player.f1_team}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+                        isOffline ? 'bg-gray-600 text-gray-200' : 'bg-green-900/70 text-green-300'
+                      }`}>
+                        {isOffline ? 'Desconectada' : 'Conectada'}
+                      </span>
+                      {isOffline && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveOfflinePlayer(player.id)}
+                          disabled={game?.phase !== 'waiting' || removingPlayerId !== null}
+                          className="rounded-lg border border-red-400/50 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Remover ${player.team_name} da grade`}
+                        >
+                          {removingPlayerId === player.id ? 'Removendo...' : 'Remover'}
+                        </button>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-lg text-white truncate">{player.team_name}</p>
-                      <p className="text-gray-300 text-base">{player.f1_team}</p>
-                    </div>
-                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse flex-shrink-0"></div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+              {removeError && <p role="alert" className="mt-3 text-sm text-red-300">{removeError}</p>}
+              <p className="mt-3 text-xs text-gray-400">Uma dupla fica offline após 90 segundos sem heartbeat. Remoções só são permitidas antes da largada.</p>
               
               {players.length === 0 && (
                 <div className="text-center py-8">

@@ -15,6 +15,7 @@ interface Player {
   position: number;
   skipped_turn: boolean;
   is_connected: boolean;
+  last_seen: string;
 }
 
 interface Game {
@@ -39,6 +40,16 @@ interface Answer {
 
 type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
 type SetupPlayerResult = 'success' | 'team_taken' | 'game_started' | 'error';
+const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
+const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
+
+interface PlayerSession {
+  playerId: string;
+  gameId: string;
+  gameCode: string;
+  teamName: string;
+  f1Team: string;
+}
 
 interface GameStore {
   viewState: ViewState;
@@ -54,6 +65,9 @@ interface GameStore {
   isPenalty: boolean;
   penaltyMessage: string;
   finishedPlayers: Player[];
+  recoveryCandidate: PlayerSession | null;
+  isCheckingRecovery: boolean;
+  recoveryError: string;
   
   setViewState: (state: ViewState) => void;
   createGame: () => Promise<void>;
@@ -66,6 +80,11 @@ interface GameStore {
   startGame: () => Promise<void>;
   subscribeToGame: () => () => void;
   loadGameState: () => Promise<void>;
+  checkPlayerRecovery: () => Promise<void>;
+  resumePlayerSession: () => Promise<void>;
+  startFreshPlayerSession: () => Promise<boolean>;
+  removeOfflinePlayer: (playerId: string) => Promise<boolean>;
+  heartbeatPlayer: (playerId: string) => Promise<void>;
 }
 
 function generateGameCode(): string {
@@ -98,6 +117,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isPenalty: false,
   penaltyMessage: '',
   finishedPlayers: [],
+  recoveryCandidate: null,
+  isCheckingRecovery: false,
+  recoveryError: '',
 
   setViewState: (state) => set({ viewState: state }),
 
@@ -124,6 +146,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(`${ADMIN_ID_PREFIX}${game.id}`, adminId);
+    }
     set({ game, viewState: 'admin_game_code' });
   },
 
@@ -184,6 +209,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         position: 0,
         skipped_turn: false,
         is_connected: true,
+        last_seen: new Date().toISOString(),
       })
       .select()
       .single();
@@ -198,8 +224,154 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return 'error';
     }
 
+    if (typeof window !== 'undefined') {
+      const session: PlayerSession = {
+        playerId: player.id,
+        gameId: game.id,
+        gameCode: game.game_code,
+        teamName: player.team_name,
+        f1Team: player.f1_team,
+      };
+      window.localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(session));
+    }
     set({ currentPlayer: player, viewState: 'player_waiting' });
     return 'success';
+  },
+
+  checkPlayerRecovery: async () => {
+    if (typeof window === 'undefined') return;
+    set({ isCheckingRecovery: true, recoveryError: '' });
+    try {
+      const stored = window.localStorage.getItem(PLAYER_SESSION_KEY);
+      if (!stored) return;
+      const session = JSON.parse(stored) as PlayerSession;
+      if (!session.playerId || !session.gameId) {
+        window.localStorage.removeItem(PLAYER_SESSION_KEY);
+        return;
+      }
+
+      const [{ data: player, error: playerError }, { data: game, error: gameError }] = await Promise.all([
+        supabase.from('players').select('*').eq('id', session.playerId).eq('game_id', session.gameId).maybeSingle(),
+        supabase.from('games').select('*').eq('id', session.gameId).maybeSingle(),
+      ]);
+      if (playerError) throw playerError;
+      if (gameError) throw gameError;
+      if (!player || !game) {
+        window.localStorage.removeItem(PLAYER_SESSION_KEY);
+        return;
+      }
+      set({
+        game,
+        recoveryCandidate: {
+          playerId: player.id,
+          gameId: game.id,
+          gameCode: game.game_code,
+          teamName: player.team_name,
+          f1Team: player.f1_team,
+        },
+      });
+    } catch (error) {
+      console.error('Error checking the saved player session:', error);
+      set({ recoveryError: 'Não foi possível verificar sua partida salva. Verifique a conexão e tente novamente.' });
+    } finally {
+      set({ isCheckingRecovery: false });
+    }
+  },
+
+  resumePlayerSession: async () => {
+    const candidate = get().recoveryCandidate;
+    if (!candidate) return;
+    const [{ data: game, error: gameError }, { data: player, error: playerError }] = await Promise.all([
+      supabase.from('games').select('*').eq('id', candidate.gameId).maybeSingle(),
+      supabase.from('players').select('*').eq('id', candidate.playerId).eq('game_id', candidate.gameId).maybeSingle(),
+    ]);
+    if (gameError || playerError || !game || !player) {
+      console.error('Error restoring the saved player session:', gameError || playerError);
+      set({ recoveryError: 'Não foi possível restaurar esta partida. Tente novamente.' });
+      return;
+    }
+    set({
+      game,
+      currentPlayer: player,
+      recoveryCandidate: null,
+      recoveryError: '',
+      viewState: game.phase === 'waiting'
+        ? 'player_waiting'
+        : game.phase === 'finished'
+          ? 'player_finished'
+          : 'player_playing',
+      hasAnswered: false,
+      selectedOption: null,
+    });
+    await get().loadGameState();
+  },
+
+  startFreshPlayerSession: async () => {
+    const candidate = get().recoveryCandidate;
+    if (!candidate) return false;
+    const { data: removed, error } = await supabase.rpc('leave_waiting_player', {
+      p_player_id: candidate.playerId,
+    });
+    if (error || !removed) {
+      console.error('Error removing the previous player:', error);
+      set({
+        recoveryError: 'Só é possível trocar de dupla enquanto a partida aguarda a largada. Sua equipe anterior foi mantida.',
+      });
+      return false;
+    }
+    if (typeof window !== 'undefined') window.localStorage.removeItem(PLAYER_SESSION_KEY);
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', candidate.gameId)
+      .maybeSingle();
+    if (gameError || !game || game.phase !== 'waiting') {
+      set({
+        recoveryError: 'A dupla anterior foi removida, mas a sala deixou de aceitar novas equipes antes da configuração terminar. Entre em outra partida.',
+        recoveryCandidate: null,
+      });
+      return false;
+    }
+    set({
+      game,
+      currentPlayer: null,
+      recoveryCandidate: null,
+      recoveryError: '',
+      viewState: 'player_setup',
+    });
+    await get().loadGameState();
+    return true;
+  },
+
+  removeOfflinePlayer: async (playerId: string) => {
+    const { game } = get();
+    if (!game || game.phase !== 'waiting' || typeof window === 'undefined') return false;
+    const adminId = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
+    if (!adminId) return false;
+    const { data, error } = await supabase.rpc('remove_offline_player', {
+      p_player_id: playerId,
+      p_admin_id: adminId,
+    });
+    if (error) {
+      console.error('Error removing offline player:', error);
+      return false;
+    }
+    if (data) await get().loadGameState();
+    return Boolean(data);
+  },
+
+  heartbeatPlayer: async (playerId: string) => {
+    const { data, error } = await supabase.rpc('player_heartbeat', {
+      p_player_id: playerId,
+    });
+    if (error) {
+      console.error('Error refreshing player presence:', error);
+      return;
+    }
+    if (!data) {
+      if (typeof window !== 'undefined') window.localStorage.removeItem(PLAYER_SESSION_KEY);
+      set({ currentPlayer: null, viewState: 'player_join' });
+    }
   },
 
   selectOption: (optionIndex: number) => {
