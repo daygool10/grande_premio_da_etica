@@ -12,29 +12,59 @@ interface CircuitBoardProps {
   boardSize: number;
 }
 
-const TRACK_POSITIONS = [
-  { left: '14%', top: '22%' },
-  { left: '35%', top: '22%' },
-  { left: '60%', top: '22%' },
-  { left: '84%', top: '22%' },
-  { left: '84%', top: '57%' },
-  { left: '60%', top: '57%' },
-  { left: '35%', top: '57%' },
-  { left: '20%', top: '57%' },
-  { left: '20%', top: '86%' },
-  { left: '50%', top: '86%' },
-  { left: '96%', top: '86%' },
+const TRACK_PATH = [
+  { x: 120, y: 100 },
+  { x: 920, y: 100 },
+  { x: 990, y: 165 },
+  { x: 990, y: 185 },
+  { x: 920, y: 250 },
+  { x: 180, y: 250 },
+  { x: 110, y: 315 },
+  { x: 110, y: 325 },
+  { x: 180, y: 380 },
+  { x: 980, y: 380 },
+  { x: 1056, y: 380 },
 ];
 
-export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
-  const positions = Array.from({ length: boardSize + 1 }, (_, position) => {
-    const point = TRACK_POSITIONS[position];
-    if (!point) {
-      throw new Error(`No circuit coordinate configured for board position ${position}`);
+function getTrackPositions(boardSize: number) {
+  const segmentLengths = TRACK_PATH.slice(1).map((point, index) => {
+    const previous = TRACK_PATH[index];
+    return Math.hypot(point.x - previous.x, point.y - previous.y);
+  });
+  const cumulativeLengths = [0];
+  for (const length of segmentLengths) {
+    cumulativeLengths.push(cumulativeLengths[cumulativeLengths.length - 1] + length);
+  }
+
+  const totalLength = cumulativeLengths[cumulativeLengths.length - 1];
+  let segmentIndex = 0;
+
+  return Array.from({ length: boardSize + 1 }, (_, position) => {
+    const distance = (totalLength * position) / boardSize;
+    while (
+      segmentIndex < segmentLengths.length - 1 &&
+      cumulativeLengths[segmentIndex + 1] < distance
+    ) {
+      segmentIndex += 1;
     }
 
-    return { position, ...point };
+    const segmentStart = TRACK_PATH[segmentIndex];
+    const segmentEnd = TRACK_PATH[segmentIndex + 1];
+    const segmentProgress =
+      (distance - cumulativeLengths[segmentIndex]) / segmentLengths[segmentIndex];
+    const x = segmentStart.x + (segmentEnd.x - segmentStart.x) * segmentProgress;
+    const y = segmentStart.y + (segmentEnd.y - segmentStart.y) * segmentProgress;
+
+    return {
+      position,
+      left: `${(x / 1100) * 100}%`,
+      top: `${(y / 440) * 100}%`,
+    };
   });
+}
+
+export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
+  const positions = getTrackPositions(boardSize);
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">

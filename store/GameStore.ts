@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { questions, BOARD_SIZE, createQuestionOrder, getQuestionAt } from '../data/questions';
+import {
+  questions,
+  createQuestionOrder,
+  getBoardSize,
+  getQuestionAt,
+} from '../data/questions';
 
 interface Player {
   id: string;
@@ -224,6 +229,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game, players: cachedPlayers } = get();
     if (!game || game.question_revealed) return;
 
+    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
     const question = getQuestionAt(game.current_question_index, game.question_order);
     if (!question) {
       throw new Error(`Question ${game.current_question_index} was not found.`);
@@ -249,7 +255,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const answersByPlayer = new Map(questionAnswers?.map((answer) => [answer.player_id, answer]));
     const eligiblePlayers = gamePlayers.filter(
-      (player) => !player.skipped_turn && player.position < BOARD_SIZE,
+      (player) => !player.skipped_turn && player.position < boardSize,
     );
     if (eligiblePlayers.some((player) => !answersByPlayer.has(player.id))) {
       throw new Error('Cannot reveal an answer until every player has submitted one.');
@@ -257,7 +263,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const cachedPlayersById = new Map(cachedPlayers.map((player) => [player.id, player]));
     const playerUpdates = gamePlayers.map((player) => {
-      if (player.skipped_turn || player.position >= BOARD_SIZE) {
+      if (player.skipped_turn || player.position >= boardSize) {
         return {
           id: player.id,
           position: player.position,
@@ -275,7 +281,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const startingPosition = cachedPlayer?.position ?? player.position;
       let position = startingPosition;
       if (option.isCorrect) {
-        position = Math.min(startingPosition + option.advance, BOARD_SIZE);
+        position = Math.min(startingPosition + option.advance, boardSize);
       } else {
         switch (option.penaltyType) {
           case 'back1':
@@ -325,6 +331,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
 
+    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
     const nextIndex = game.current_question_index + 1;
 
     const [{ data: playersToCheck, error: playersError }, { data: currentAnswers, error: answersError }] = await Promise.all([
@@ -345,7 +352,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const answeredPlayerIds = new Set(currentAnswers?.map((answer) => answer.player_id));
     const playersToUnskip = (playersToCheck ?? [])
-      .filter((player) => player.position < BOARD_SIZE && !answeredPlayerIds.has(player.id))
+      .filter((player) => player.position < boardSize && !answeredPlayerIds.has(player.id))
       .map((player) => player.id);
 
     const { data: updatedGame, error: gameError } = await supabase
@@ -516,7 +523,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
-      const finished = players?.filter(p => p.position >= BOARD_SIZE) || [];
+      const boardSize = getBoardSize(updatedGame.question_order?.length ?? questions.length);
+      const finished = players?.filter(p => p.position >= boardSize) || [];
       set({ finishedPlayers: finished });
     }
   },

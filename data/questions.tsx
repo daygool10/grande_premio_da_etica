@@ -411,6 +411,12 @@ export const questions: Question[] = [
   },
 ];
 
+export const MAX_QUESTIONS_PER_GAME = 20;
+
+export function getBoardSize(questionCount: number): number {
+  return Math.max(10, Math.ceil(questionCount * 1.5));
+}
+
 export function createQuestionOrder(): number[] {
   const shuffledQuestions = [...questions];
 
@@ -422,7 +428,9 @@ export function createQuestionOrder(): number[] {
     ];
   }
 
-  return shuffledQuestions.map((question) => question.id);
+  return shuffledQuestions
+    .slice(0, MAX_QUESTIONS_PER_GAME)
+    .map((question) => question.id);
 }
 
 export function getQuestionAt(
@@ -439,5 +447,5 @@ export function getQuestionAt(
   return questions.find((question) => question.id === questionId) ?? null;
 }
 
-export const BOARD_SIZE = 10;
+export const BOARD_SIZE = getBoardSize(MAX_QUESTIONS_PER_GAME);
 export const MAX_TEAMS = 11;

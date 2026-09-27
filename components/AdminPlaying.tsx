@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS, BOARD_SIZE, questions, getQuestionAt } from '../data/questions';
+import {
+  TEAM_COLORS,
+  getBoardSize,
+  questions,
+  getQuestionAt,
+} from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 import { sortFinishers } from '../lib/finishOrder';
@@ -27,15 +32,17 @@ export function AdminPlaying() {
     game?.current_question_index || 0,
     game?.question_order,
   );
+  const questionCount = game?.question_order?.length ?? questions.length;
+  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
 
   const eligiblePlayers = players.filter(
-    (player) => !player.skipped_turn && player.position < BOARD_SIZE,
+    (player) => !player.skipped_turn && player.position < boardSize,
   );
   const answeredCount = eligiblePlayers.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
   const allPlayersAnswered = players.length > 0 && answeredCount === eligiblePlayers.length;
-  const finishedPlayers = players.filter(player => player.position >= BOARD_SIZE);
+  const finishedPlayers = players.filter(player => player.position >= boardSize);
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
   const podiumSize = Math.max(1, Math.min(3, players.length));
   const podiumReady = finishedPlayers.length >= podiumSize;
@@ -75,7 +82,7 @@ export function AdminPlaying() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <span className="inline-block bg-red-600 px-3 py-1 rounded text-sm font-bold">F1</span>
-            <h2 className="text-xl font-bold">Pergunta {(game?.current_question_index || 0) + 1}/{questions.length}</h2>
+            <h2 className="text-xl font-bold">Pergunta {(game?.current_question_index || 0) + 1}/{questionCount}</h2>
           </div>
           <div className="flex items-center gap-4">
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -94,7 +101,7 @@ export function AdminPlaying() {
               <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
               <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
             </div>
-            <CircuitBoard players={players} boardSize={BOARD_SIZE} />
+            <CircuitBoard players={players} boardSize={boardSize} />
         </section>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -192,11 +199,11 @@ export function AdminPlaying() {
                         <p className="text-gray-400 text-xs">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold">{p.position}/10</p>
+                        <p className="text-sm font-bold">{p.position}/{boardSize}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>
-                          {p.position >= BOARD_SIZE
+                          {p.position >= boardSize
                             ? 'Finalizou'
                             : p.skipped_turn
                               ? 'Punição'

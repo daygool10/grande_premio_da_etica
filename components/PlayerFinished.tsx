@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { getBoardSize, questions, TEAM_COLORS } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { sortFinishers } from '../lib/finishOrder';
 
 export function PlayerFinished() {
-  const { players, currentPlayer, answers, loadGameState } = useGameStore();
+  const { game, players, currentPlayer, answers, loadGameState } = useGameStore();
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
+  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
 
   useEffect(() => {
     loadGameState();
@@ -32,15 +33,15 @@ export function PlayerFinished() {
         currentPlayer,
       ]
     : players;
-  const finishedPlayers = playersWithCurrent.filter(player => player.position >= 10);
+  const finishedPlayers = playersWithCurrent.filter(player => player.position >= boardSize);
   const podiumSize = Math.max(1, Math.min(3, playersWithCurrent.length));
   const podiumReady = finishedPlayers.length >= podiumSize && podiumSize > 0;
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
 
   const sortedPlayers = [...playersWithCurrent].sort((a, b) => {
-    if (a.position >= 10 && b.position >= 10) return 0;
-    if (a.position >= 10) return -1;
-    if (b.position >= 10) return 1;
+    if (a.position >= boardSize && b.position >= boardSize) return 0;
+    if (a.position >= boardSize) return -1;
+    if (b.position >= boardSize) return 1;
     return b.position - a.position;
   });
 
