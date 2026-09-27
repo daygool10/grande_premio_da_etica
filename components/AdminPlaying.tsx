@@ -5,6 +5,7 @@ import { TEAM_COLORS } from '../lib/teams';
 import { questions } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
+import { AdminDebrief } from './AdminDebrief';
 import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
 
 export function AdminPlaying() {
@@ -94,6 +95,15 @@ export function AdminPlaying() {
             </div>
             <CircuitBoard players={players} finishLine={finishLine} />
         </section>
+
+        {game?.question_revealed && (
+          <AdminDebrief
+            players={players}
+            answers={answers}
+            question={q}
+            questionIndex={game?.current_question_index ?? 0}
+          />
+        )}
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           {/* Question Section */}

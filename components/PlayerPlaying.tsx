@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { activeRaceLength, raceFinishLine } from '../store/raceProgress';
 import { TEAM_COLORS } from '../lib/teams';
+import { questions } from '../data/questions';
+import { questionDeltas, overtakeReport } from '../lib/debrief';
 import { TeamLogo } from './TeamLogo';
 import { CircuitBoard } from './CircuitBoard';
 import { PlayerQuestion } from './PlayerQuestion';
+import { PlayerScoreFlash } from './PlayerScoreFlash';
 
 export function PlayerPlaying() {
   const { 
@@ -28,6 +31,17 @@ export function PlayerPlaying() {
       setViewState('player_playing');
     }
   }, [game?.phase, game?.question_revealed, setViewState]);
+
+  const roundDebrief = useMemo(() => {
+    if (!hasAnswered || !game?.question_revealed || !currentPlayer) return null;
+    const index = game.current_question_index;
+    const deltas = questionDeltas(answers, players, questions, index);
+    const report = overtakeReport(deltas, players);
+    return {
+      delta: deltas.get(currentPlayer.id) ?? null,
+      overtake: report.get(currentPlayer.id) ?? null,
+    };
+  }, [hasAnswered, game?.question_revealed, game?.current_question_index, answers, players, currentPlayer]);
 
   const q = currentQuestion;
 
@@ -99,8 +113,12 @@ export function PlayerPlaying() {
         </div>
 
         {/* Board */}
-        <div className="mb-4 overflow-hidden rounded-2xl border border-gray-600 shadow-xl">
+        <div className="relative mb-4 overflow-hidden rounded-2xl border border-gray-600 shadow-xl">
           <CircuitBoard players={players} finishLine={finishLine} highlightPlayerId={currentPlayer.id} compact />
+          <PlayerScoreFlash
+            delta={roundDebrief?.delta ?? null}
+            overtake={roundDebrief?.overtake ?? null}
+          />
         </div>
 
         <PlayerQuestion
