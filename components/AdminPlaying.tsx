@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS, BOARD_SIZE, questions } from '../data/questions';
+import { useGameStore, activeRaceLength, raceFinishLine } from '../store/GameStore';
+import { TEAM_COLORS } from '../lib/teams';
+import { questions } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
-import { sortFinishers } from '../lib/finishOrder';
+import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
 
 export function AdminPlaying() {
   const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers } = useGameStore();
@@ -23,19 +24,20 @@ export function AdminPlaying() {
     }
   }, [game?.phase, setViewState]);
 
+  const raceLength = activeRaceLength(game);
+  const finishLine = raceFinishLine(game);
+
   const q = currentQuestion || questions[game?.current_question_index || 0];
 
-  const eligiblePlayers = players.filter(
-    (player) => !player.skipped_turn && player.position < BOARD_SIZE,
-  );
+  const eligiblePlayers = players.filter((player) => !player.skipped_turn);
   const answeredCount = eligiblePlayers.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
   const allPlayersAnswered = players.length > 0 && answeredCount === eligiblePlayers.length;
-  const finishedPlayers = players.filter(player => player.position >= BOARD_SIZE);
-  const orderedFinishers = sortFinishers(finishedPlayers, answers);
-  const podiumSize = Math.max(1, Math.min(3, players.length));
-  const podiumReady = finishedPlayers.length >= podiumSize;
+
+  const speedRanks = accumulateSpeedRanks(answers);
+  const scores = new Map(players.map((player) => [player.id, player.position]));
+  const classification = rankPlayers(players, scores, speedRanks);
 
   const handleRevealAnswer = async () => {
     if (!allPlayersAnswered || isRevealing) return;
@@ -72,7 +74,7 @@ export function AdminPlaying() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <span className="inline-block bg-red-600 px-3 py-1 rounded text-sm font-bold">F1</span>
-            <h2 className="text-xl font-bold">Pergunta {(game?.current_question_index || 0) + 1}/{questions.length}</h2>
+            <h2 className="text-xl font-bold">Pergunta {(game?.current_question_index || 0) + 1}/{raceLength}</h2>
           </div>
           <div className="flex items-center gap-4">
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
@@ -89,9 +91,9 @@ export function AdminPlaying() {
               <span className="text-2xl">🏁</span>
               <h3 className="text-lg font-black uppercase tracking-wider text-white">Tabuleiro da Corrida</h3>
               <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
-              <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
+              <F1Semaphore status="running" />
             </div>
-            <CircuitBoard players={players} boardSize={BOARD_SIZE} />
+            <CircuitBoard players={players} finishLine={finishLine} />
         </section>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -176,7 +178,7 @@ export function AdminPlaying() {
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
               <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">👥 Equipes Conectadas</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {players.map(p => {
+                {classification.map(p => {
                   const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
                   return (
                     <div key={p.id} className="flex items-center gap-3 bg-gray-700/30 rounded-lg p-3">
@@ -189,17 +191,15 @@ export function AdminPlaying() {
                         <p className="text-gray-400 text-xs">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold">{p.position}/10</p>
+                        <p className="text-sm font-bold">{p.position}/{finishLine}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>
-                          {p.position >= BOARD_SIZE
-                            ? 'Finalizou'
-                            : p.skipped_turn
-                              ? 'Punição'
-                              : hasAnswered
-                                ? 'Respondeu'
-                                : 'Aguardando'}
+                          {p.skipped_turn
+                            ? 'Punição'
+                            : hasAnswered
+                              ? 'Respondeu'
+                              : 'Aguardando'}
                         </span>
                       </div>
                     </div>
@@ -208,31 +208,24 @@ export function AdminPlaying() {
               </div>
             </div>
 
-            {/* Podium Preview */}
-            {finishedPlayers.length > 0 && (
-              <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3 uppercase tracking-wider">
-                  {podiumReady ? '🏆 Pódio completo' : '🏁 Chegada'}
-                </h3>
-                {!podiumReady ? (
-                  <p className="text-sm text-gray-300">
-                    {orderedFinishers[0].team_name} está em 1º lugar. O pódio será gerado quando mais {podiumSize - finishedPlayers.length} equipe
-                    {podiumSize - finishedPlayers.length === 1 ? '' : 's'} cruzar
-                    {podiumSize - finishedPlayers.length === 1 ? '' : 'em'} a linha de chegada.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                  {orderedFinishers.slice(0, 3).map((p, i) => (
-                      <div key={p.id} className="flex items-center gap-2">
-                        <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
-                        <span className="font-bold text-sm">{p.team_name}</span>
-                      </div>
-                    ))}
+            {/* Live Classification */}
+            <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-yellow-400 mb-3 uppercase tracking-wider">
+                🏁 Classificação ao vivo
+              </h3>
+              <div className="space-y-2">
+                {classification.map((p, i) => (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">
+                      {i + 1}º
+                    </span>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
+                    <span className="font-bold text-sm truncate flex-1">{p.team_name}</span>
+                    <span className="text-sm font-bold">{p.position}</span>
                   </div>
-                )}
+                ))}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

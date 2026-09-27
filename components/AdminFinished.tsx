@@ -1,13 +1,12 @@
-import React from 'react';
 import { useEffect, useState } from 'react';
-import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { useGameStore, raceFinishLine } from '../store/GameStore';
+import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
-import { sortFinishers } from '../lib/finishOrder';
+import { rankPlayers, accumulateSpeedRanks } from '../lib/scoring';
 import { F1Semaphore } from './F1Semaphore';
 
 export function AdminFinished() {
-  const { players, answers, loadGameState, setViewState } = useGameStore();
+  const { players, answers, game, loadGameState, setViewState } = useGameStore();
   const [showPodium, setShowPodium] = useState(false);
 
   useEffect(() => {
@@ -20,18 +19,12 @@ export function AdminFinished() {
     };
   }, [loadGameState]);
 
-  const finishedPlayers = players.filter(player => player.position >= 10);
-  const podiumSize = Math.max(1, Math.min(3, players.length));
-  const podiumReady = finishedPlayers.length >= podiumSize;
-
-  const orderedFinishers = sortFinishers(finishedPlayers, answers);
-  const sortedPlayers = [
-    ...orderedFinishers,
-    ...players
-      .filter(player => player.position < 10)
-      .sort((a, b) => b.position - a.position),
-  ];
-  const podium = orderedFinishers.slice(0, 3);
+  const speedRanks = accumulateSpeedRanks(answers);
+  const scores = new Map(players.map((player) => [player.id, player.position]));
+  const classification = rankPlayers(players, scores, speedRanks);
+  const finishLine = raceFinishLine(game);
+  const winner = classification[0];
+  const podium = classification.slice(0, 3);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -41,7 +34,7 @@ export function AdminFinished() {
 
       <div className="max-w-2xl w-full text-center relative z-10">
         <div className="mb-5 flex justify-center">
-          <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
+          <F1Semaphore status="finished" />
         </div>
         <div className={`transition-all duration-1000 ${showPodium ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <div className="mb-6">
@@ -52,25 +45,12 @@ export function AdminFinished() {
             <span className="text-yellow-400">PODIO</span>
           </h2>
           <p className="text-gray-400 mb-8 text-lg">
-            {podiumReady ? 'Resultados finais da corrida' : 'Aguardando a formação do pódio'}
+            {winner ? `${winner.team_name} vence o Grande Prêmio da Ética!` : 'Resultados finais da corrida'}
           </p>
         </div>
 
-        {!podiumReady && (
-          <div className="mb-6 rounded-xl border border-yellow-500/40 bg-yellow-900/20 p-5">
-            <p className="text-lg font-bold text-yellow-300">
-              {orderedFinishers[0]?.team_name
-                ? `${orderedFinishers[0].team_name} está em 1º lugar. `
-                : ''}
-              O pódio será gerado quando mais {podiumSize - finishedPlayers.length} equipe
-              {podiumSize - finishedPlayers.length === 1 ? '' : 's'} cruzar
-              {podiumSize - finishedPlayers.length === 1 ? '' : 'em'} a linha de chegada.
-            </p>
-          </div>
-        )}
-
         {/* F1 Style Podium */}
-        {podiumReady && <div className={`transition-all duration-1000 delay-500 ${showPodium ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}>
+        <div className={`transition-all duration-1000 delay-500 ${showPodium ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}>
           <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-2 border-gray-700 rounded-2xl p-8 mb-6">
             <h3 className="mb-6 text-xl font-black uppercase tracking-wider">
               <span className="text-yellow-400">PÓDIO</span> F1
@@ -127,14 +107,13 @@ export function AdminFinished() {
             </div>
           </div>
         </div>
-        }
 
         {/* Full Classification */}
-        {podiumReady && <div className={`transition-all duration-1000 delay-700 ${showPodium ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}>
+        <div className={`transition-all duration-1000 delay-700 ${showPodium ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`}>
           <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 mb-6">
             <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Classificação Final</h3>
             <div className="space-y-2">
-              {sortedPlayers.map((p, i) => (
+              {classification.map((p, i) => (
                 <div key={p.id} className="flex items-center gap-3 bg-gray-700/30 rounded-lg p-3">
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                     i === 0 ? 'bg-yellow-500 text-black' :
@@ -147,20 +126,19 @@ export function AdminFinished() {
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
                   <span className="font-bold flex-1 text-left">{p.team_name}</span>
                   <span className="text-gray-400 text-sm">{p.f1_team}</span>
-                  <span className="text-sm font-bold">{p.position}/10</span>
+                  <span className="text-sm font-bold">{p.position}/{finishLine}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
-        }
 
-        {podiumReady && <button
+        <button
           onClick={() => setViewState('start')}
           className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold py-3 px-8 rounded-xl text-lg transition-all"
         >
           🏁 Nova Partida
-        </button>}
+        </button>
       </div>
     </div>
   );

@@ -1,11 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
+import { RACE_LENGTH_OPTIONS, DEFAULT_RACE_LENGTH } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
 
 export function AdminWaiting() {
-  const { game, players, startGame, setViewState, loadGameState } = useGameStore();
+  const { game, players, setRaceLength, startGame, setViewState, loadGameState } = useGameStore();
+  const [raceLength, setLocalRaceLength] = useState<number>(() =>
+    game && typeof game.race_length === 'number' && game.race_length > 0
+      ? game.race_length
+      : DEFAULT_RACE_LENGTH,
+  );
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState('');
 
   useEffect(() => {
     loadGameState();
@@ -18,8 +26,18 @@ export function AdminWaiting() {
       alert('Aguarde pelo menos 1 jogador entrar!');
       return;
     }
-    await startGame();
-    setViewState('admin_playing');
+    setIsStarting(true);
+    setStartError('');
+    try {
+      await setRaceLength(raceLength);
+      await startGame();
+      setViewState('admin_playing');
+    } catch (startErrorCaught) {
+      console.error('Error starting game:', startErrorCaught);
+      setStartError('Não foi possível iniciar a corrida. Tente novamente.');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
@@ -83,12 +101,37 @@ export function AdminWaiting() {
               )}
             </div>
 
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">
+                🏁 Configuração da Corrida
+              </h3>
+              <label htmlFor="race-length" className="mb-2 block text-sm text-gray-300">
+                Número de perguntas da corrida
+              </label>
+              <select
+                id="race-length"
+                value={raceLength}
+                onChange={(event) => setLocalRaceLength(Number(event.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500"
+              >
+                {RACE_LENGTH_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option} perguntas
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {startError && (
+              <p role="alert" className="text-sm text-red-400 text-center">{startError}</p>
+            )}
+
             <button
               onClick={handleStart}
-              disabled={players.length < 1}
+              disabled={players.length < 1 || isStarting}
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100"
             >
-              🏁 Iniciar Corrida ({players.length} jogador(es))
+              {isStarting ? 'Iniciando...' : `🏁 Iniciar Corrida (${players.length} jogador(es))`}
             </button>
           </div>
         </div>
