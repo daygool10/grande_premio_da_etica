@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { activeRaceLength, raceFinishLine } from '../store/raceProgress';
 import { TEAM_COLORS } from '../lib/teams';
+import { playCue } from '../lib/sound';
 import { questions } from '../data/questions';
 import { questionDeltas, overtakeReport } from '../lib/debrief';
 import { TeamLogo } from './TeamLogo';
@@ -31,6 +32,18 @@ export function PlayerPlaying() {
       setViewState('player_playing');
     }
   }, [game?.phase, game?.question_revealed, setViewState]);
+
+  const lastCueQuestion = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!game?.question_revealed || !hasAnswered || !currentPlayer) return;
+    const index = game.current_question_index;
+    if (lastCueQuestion.current === index) return;
+    const option = currentQuestion?.options[selectedOption ?? -1];
+    if (!option) return;
+    lastCueQuestion.current = index;
+    playCue(option.isCorrect ? 'correct' : 'wrong');
+  }, [game?.question_revealed, game?.current_question_index, hasAnswered, currentPlayer, currentQuestion, selectedOption]);
 
   const roundDebrief = useMemo(() => {
     if (!hasAnswered || !game?.question_revealed || !currentPlayer) return null;

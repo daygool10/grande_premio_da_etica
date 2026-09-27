@@ -9,6 +9,7 @@ import { PlayerSetup } from './components/PlayerSetup';
 import { PlayerWaiting } from './components/PlayerWaiting';
 import { PlayerPlaying } from './components/PlayerPlaying';
 import { PlayerFinished } from './components/PlayerFinished';
+import { SoundPrompt } from './components/SoundPrompt';
 import { StartScreen } from './components/StartScreen';
 
 const FALLBACK_POLL_MS = 10000;
@@ -46,17 +47,21 @@ export default function App() {
     );
   }
 
-  switch (viewState) {
-    case 'admin_game_code': return <AdminGameCode />;
-    case 'admin_waiting': return <AdminWaiting />;
-    case 'admin_playing': return <AdminPlaying />;
-    case 'admin_finished': return <AdminFinished />;
-    case 'player_join': return <PlayerJoin />;
-    case 'player_setup': return <PlayerSetup />;
-    case 'player_waiting': return <PlayerWaiting />;
-    case 'player_playing': return <PlayerPlaying />;
-    case 'player_finished': return <PlayerFinished />;
-    case 'start':
-    default: return <StartScreen />;
-  }
+  const view = (() => {
+    switch (viewState) {
+      case 'admin_game_code': return <AdminGameCode />;
+      case 'admin_waiting': return <AdminWaiting />;
+      case 'admin_playing': return <AdminPlaying />;
+      case 'admin_finished': return <AdminFinished />;
+      case 'player_join': return <PlayerJoin />;
+      case 'player_setup': return <PlayerSetup />;
+      case 'player_waiting': return <PlayerWaiting />;
+      case 'player_playing': return <PlayerPlaying />;
+      case 'player_finished': return <PlayerFinished />;
+      case 'start':
+      default: return <StartScreen />;
+    }
+  })();
+
+  return <>{view}<SoundPrompt /></>;
 }

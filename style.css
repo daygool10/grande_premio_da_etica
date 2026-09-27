@@ -89,3 +89,41 @@ body {
 .animate-bounce {
   animation: bounce 1s ease-in-out infinite;
 }
+
+/* Podium arrival: third place steps up first, then second, then first, so the
+   winner settles last. The step timer in PodiumArrival toggles each column from
+   .podium-arrival (hidden) to .podium-arrival-in (animated rise). */
+@keyframes podium-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(70px) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.podium-arrival,
+.podium-arrival-in {
+  opacity: 0;
+}
+
+.podium-arrival-in {
+  animation: podium-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .podium-arrival,
+  .podium-arrival-in {
+    opacity: 1;
+  }
+
+  .podium-arrival-in {
+    animation: none;
+  }
+}
