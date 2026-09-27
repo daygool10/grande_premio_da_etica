@@ -3,13 +3,13 @@ import { useGameStore } from './store/GameStore';
 import { AdminGameCode } from './components/AdminGameCode';
 import { AdminWaiting } from './components/AdminWaiting';
 import { AdminPlaying } from './components/AdminPlaying';
-import { AdminFinished } from './components/Admimfinished';
-import { PlayerJoin } from './components/playerjoin';
-import { PlayerSetup } from './components/player_setup';
-import { PlayerWaiting } from './components/playerwaiting';
-import { PlayerPlaying } from './components/player_playing';
+import { AdminFinished } from './components/AdminFinished';
+import { PlayerJoin } from './components/PlayerJoin';
+import { PlayerSetup } from './components/PlayerSetup';
+import { PlayerWaiting } from './components/PlayerWaiting';
+import { PlayerPlaying } from './components/PlayerPlaying';
 import { PlayerFinished } from './components/PlayerFinished';
-import { StartScreen } from './components/start_screen';
+import { StartScreen } from './components/StartScreen';
 
 export default function App() {
   const { viewState, game, subscribeToGame } = useGameStore();

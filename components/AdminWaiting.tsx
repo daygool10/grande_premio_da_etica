@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS, RACE_LENGTH_OPTIONS, DEFAULT_RACE_LENGTH } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
+import { RACE_LENGTH_OPTIONS, DEFAULT_RACE_LENGTH } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
 
