@@ -48,6 +48,7 @@ type SetupPlayerResult =
   | 'error';
 const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
 const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
+const ADMIN_SESSION_KEY = 'f1-ethics-admin-session';
 export const DATABASE_SCHEMA_ERROR =
   'A estrutura do banco de dados está desatualizada. Execute o docker-compose e tente novamente.';
 
@@ -58,6 +59,11 @@ interface PlayerSession {
   teamName: string;
   f1Team: string;
   sessionToken: string;
+}
+
+interface AdminSession {
+  gameId: string;
+  viewState: Extract<ViewState, `admin_${string}`>;
 }
 
 interface GameStore {
@@ -136,7 +142,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isCheckingRecovery: false,
   recoveryError: '',
 
-  setViewState: (state) => set({ viewState: state }),
+  setViewState: (state) => {
+    const { game } = get();
+    if (typeof window !== 'undefined') {
+      if (state.startsWith('admin_') && game) {
+        const adminSessionToken = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
+        if (adminSessionToken) {
+          const session: AdminSession = { gameId: game.id, viewState: state as AdminSession['viewState'] };
+          window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+        }
+      } else if (state === 'start') {
+        window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      }
+    }
+    set({ viewState: state });
+  },
 
   createGame: async () => {
     const gameCode = generateGameCode();
@@ -156,6 +176,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(`${ADMIN_ID_PREFIX}${game.id}`, adminSessionToken);
+      const session: AdminSession = { gameId: game.id, viewState: 'admin_game_code' };
+      window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
     }
     set({ game, viewState: 'admin_game_code' });
   },
@@ -228,6 +250,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (typeof window === 'undefined') return;
     set({ isCheckingRecovery: true, recoveryError: '' });
     try {
+      const savedAdminSession = window.localStorage.getItem(ADMIN_SESSION_KEY);
+      if (savedAdminSession) {
+        let adminSession: AdminSession | null;
+        try {
+          adminSession = JSON.parse(savedAdminSession) as AdminSession;
+          if (!adminSession.gameId || !adminSession.viewState?.startsWith('admin_')) {
+            throw new Error('Invalid admin session');
+          }
+        } catch {
+          window.localStorage.removeItem(ADMIN_SESSION_KEY);
+          adminSession = null;
+        }
+
+        if (adminSession) {
+          const adminSessionToken = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${adminSession.gameId}`);
+          if (!adminSessionToken) {
+            window.localStorage.removeItem(ADMIN_SESSION_KEY);
+          } else if (await database.adminSessionValid(adminSession.gameId, adminSessionToken)) {
+            const game = await database.getGameById(adminSession.gameId);
+            if (game) {
+              const viewState: ViewState = game.phase === 'waiting'
+                ? adminSession.viewState === 'admin_game_code' ? 'admin_game_code' : 'admin_waiting'
+                : game.phase === 'finished' ? 'admin_finished' : 'admin_playing';
+              set({ game, viewState });
+              await get().loadGameState();
+              return;
+            }
+            window.localStorage.removeItem(ADMIN_SESSION_KEY);
+          } else {
+            window.localStorage.removeItem(ADMIN_SESSION_KEY);
+          }
+        }
+      }
+
       const stored = window.localStorage.getItem(PLAYER_SESSION_KEY);
       if (!stored) return;
       const session = JSON.parse(stored) as PlayerSession;
