@@ -14,9 +14,14 @@ export function PlayerJoin() {
       return;
     }
     setError('');
-    const joined = await joinGame(normalized);
+    let joined = false;
+    try {
+      joined = await joinGame(normalized);
+    } catch (joinError) {
+      console.error('Error joining game:', joinError);
+    }
     if (!joined) {
-      setError('Partida não encontrada ou já iniciada. Confira o código ou escolha uma sala que ainda esteja aguardando jogadores.');
+      setError('Não foi possível encontrar uma sala aguardando com esse código. Confira o código e tente novamente.');
       return;
     }
     setViewState('player_setup');

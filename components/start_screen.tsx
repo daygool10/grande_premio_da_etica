@@ -1,7 +1,29 @@
+import { useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 
 export function StartScreen() {
   const { createGame, setViewState } = useGameStore();
+  const [createError, setCreateError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateGame = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    setCreateError('');
+    try {
+      await createGame();
+    } catch (error) {
+      console.error('Unable to create a game:', error);
+      const databaseError = error as { code?: string };
+      setCreateError(
+        databaseError.code === '42703' || databaseError.code === '42P01'
+          ? 'O banco de dados precisa ser inicializado. Execute o docker-compose e tente novamente.'
+          : 'Não foi possível criar a partida. Verifique a conexão com o servidor e tente novamente.',
+      );
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[#1a1a2e] p-6">
@@ -21,8 +43,8 @@ export function StartScreen() {
           <p className="mt-4 text-lg text-gray-300 sm:text-2xl">Uma corrida de decisões, responsabilidade e integridade.</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <button onClick={createGame} className="rounded-xl bg-red-600 px-8 py-6 text-xl font-bold text-white transition hover:bg-red-500 sm:text-2xl">
-            Criar partida
+          <button onClick={() => void handleCreateGame()} disabled={isCreating} className="rounded-xl bg-red-600 px-8 py-6 text-xl font-bold text-white transition hover:bg-red-500 disabled:cursor-wait disabled:opacity-70 sm:text-2xl">
+            {isCreating ? 'Criando partida...' : 'Criar partida'}
             <span className="mt-2 block text-base font-normal text-red-100 sm:text-lg">Você será o administrador</span>
           </button>
           <button onClick={() => setViewState('player_join')} className="rounded-xl border border-gray-600 bg-gray-800 px-8 py-6 text-xl font-bold text-white transition hover:border-gray-400 hover:bg-gray-700 sm:text-2xl">
@@ -30,6 +52,7 @@ export function StartScreen() {
             <span className="mt-2 block text-base font-normal text-gray-300 sm:text-lg">Tenho um código</span>
           </button>
         </div>
+        {createError && <p role="alert" className="mt-5 text-base text-red-300">{createError}</p>}
       </div>
     </main>
   );

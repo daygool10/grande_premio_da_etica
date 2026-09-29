@@ -6,7 +6,7 @@ Jogo multiplayer de perguntas sobre ética no automobilismo, apresentado como um
 
 - Até 11 duplas podem participar de uma partida, cada uma escolhendo uma equipe de F1 diferente.
 - Administrador e jogadores acessam a mesma partida em dispositivos diferentes usando um código de seis caracteres.
-- O Supabase armazena partidas, participantes e respostas e sincroniza as atualizações entre as telas.
+- O PostgreSQL armazena partidas, participantes e respostas, com sincronização via polling a cada 2 segundos.
 - Há 35 estudos de caso cadastrados. Cada nova partida recebe uma seleção aleatória de 20 perguntas, em uma ordem própria.
 - O tabuleiro de uma partida com 20 perguntas tem 30 casas. O tamanho do percurso é calculado proporcionalmente à quantidade de perguntas.
 - A duração pretendida é de aproximadamente 10 minutos, considerando cerca de 30 segundos por pergunta. Esse tempo é uma estimativa, não um limite automático: depende do ritmo das respostas e do administrador.
@@ -34,7 +34,7 @@ As equipes elegíveis recebem a mesma pergunta. Cada pergunta apresenta um caso 
 
 - A resposta correta avança a quantidade de casas definida para aquela pergunta, limitada à linha de chegada.
 - A resposta incorreta aplica a penalidade descrita na alternativa: perder uma rodada ou voltar uma ou duas casas, ou ao início.
-- A resposta correta só é revelada pelo administrador depois que todas as equipes elegíveis responderem.
+- A resposta correta só é revelada pelo administrador depois que todas as equipes elegíveis responderam.
 - Equipes que já terminaram não precisam responder às perguntas seguintes.
 - Quando uma equipe perde uma rodada, ela aguarda a próxima pergunta sem responder à rodada atual.
 - A sala de espera considera uma dupla desconectada depois de 90 segundos sem heartbeat. Antes da largada, o administrador pode removê-la; a equipe F1 volta a ficar disponível.
@@ -57,7 +57,32 @@ As interfaces usam as cores e os carrinhos correspondentes às equipes. As anima
 
 ## Executar localmente
 
-Requisitos: Node.js compatível com Vite 7 e npm.
+### Requisitos
+
+- Docker e Docker Compose
+- Node.js compatível com Vite 7 e npm
+
+### Passo 1: Configurar variáveis de ambiente
+
+No PowerShell, copie o arquivo de exemplo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+O backend aceita uma URL de conexão em `DATABASE_URL` ou as configurações individuais `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PGSSLMODE`. `PGSSLMODE=require` habilita SSL. Ajuste as credenciais conforme seu PostgreSQL.
+
+No Docker Compose, a API usa a URL interna `postgresql://daya:1234@postgres:5432/etica_f1` e SSL fica desabilitado para a conexão local entre containers. O banco é publicado em `localhost:5433` para conexões feitas pelo computador; portanto, se executar a API fora do Docker contra esse banco, use `postgresql://daya:1234@localhost:5433/etica_f1` ou configure `PGPORT=5433`, `PGUSER=daya`, `PGPASSWORD=1234` e `PGSSLMODE=disable`.
+
+### Passo 2: Iniciar o banco de dados e API
+
+```bash
+docker-compose up -d
+```
+
+Isso inicia o PostgreSQL na porta 5433 do computador (5432 dentro do container) e a API em `http://localhost:3002`. O frontend usa essa URL por meio de `VITE_API_URL`. As tabelas e funções são criadas automaticamente no primeiro início do volume.
+
+### Passo 3: Instalar dependências e executar o frontend
 
 ```bash
 npm install
@@ -71,22 +96,19 @@ npm run build
 npm run preview
 ```
 
-## Supabase
+## Arquitetura
 
-O cliente Supabase da aplicação está configurado em [`lib/supabase.ts`](./lib/supabase.ts). O projeto precisa ter as tabelas `games`, `players` e `answers` com os campos usados pelo jogo, permissões de acesso adequadas às operações dos participantes e administrador e Realtime habilitado para as atualizações das partidas, equipes e respostas.
+```
+┌─────────────────┐      HTTP/REST       ┌─────────────────┐      SQL       ┌─────────────────┐
+│                 │ ◄──────────────────► │                 │ ◄────────────► │                 │
+│   Frontend      │                      │   API Server    │                 │   PostgreSQL    │
+│   (Vite/React)  │                      │   (Express)     │                 │   (Docker)      │
+│                 │                      │   Host: 3002   │                 │   Host: 5433    │
+│                 │                      │                │                 │ Container: 5432 │
+└─────────────────┘                      └─────────────────┘                 └─────────────────┘
+```
 
-### Migrations
-
-Execute as migrations no projeto Supabase associado à aplicação, pelo Supabase CLI ou pelo SQL Editor:
-
-- [`20260926140000_unique_f1_team_per_game.sql`](./supabase/migrations/20260926140000_unique_f1_team_per_game.sql): cria uma restrição única por partida e equipe F1, evitando escolhas duplicadas. Antes de executá-la, resolva eventuais duplicatas já existentes.
-- [`20260926203000_random_question_order_per_game.sql`](./supabase/migrations/20260926203000_random_question_order_per_game.sql): adiciona `question_order` à tabela `games` para persistir a sequência de perguntas de cada nova partida.
-- [`20260927120000_players_only_join_waiting_games.sql`](./supabase/migrations/20260927120000_players_only_join_waiting_games.sql): impede, inclusive em uma disputa entre a largada e a entrada de um jogador, que participantes sejam adicionados depois que a partida começou.
-- [`20260927180000_player_presence_and_recovery.sql`](./supabase/migrations/20260927180000_player_presence_and_recovery.sql): adiciona `players.last_seen` e as funções de heartbeat e remoção controlada. Aplique esta migration no Supabase antes de publicar a versão atualizada; não é necessário alterar dados existentes manualmente. A função do administrador só remove uma dupla se a partida ainda estiver aguardando, o heartbeat tiver mais de 90 segundos e o `admin_id` corresponder ao da partida. A remoção também elimina respostas associadas.
-
-Partidas existentes sem `question_order` continuam usando a ordem original das perguntas. A nova seleção aleatória é aplicada às partidas criadas depois da atualização.
-
-## Estrutura do projeto
+### Componentes
 
 | Caminho | Responsabilidade |
 | --- | --- |
@@ -94,9 +116,12 @@ Partidas existentes sem `question_order` continuam usando a ordem original das p
 | `components/` | Telas de jogador e administrador, tabuleiro, grid, carrinhos, logos e semáforo. |
 | `data/questions.tsx` | Casos, alternativas, equipes, sorteio de perguntas e cálculo do percurso. |
 | `store/GameStore.ts` | Estado compartilhado e operações de partida, respostas, progresso e sincronização. |
-| `lib/finishOrder.ts` | Ordenação das equipes que cruzaram a linha de chegada. |
-| `lib/supabase.ts` | Cliente do Supabase. |
-| `supabase/migrations/` | Alterações versionadas no banco de dados. |
+| `lib/database.ts` | Cliente HTTP para a API REST do jogo. |
+| `server/index.js` | Servidor Express com endpoints REST. |
+| `server/init.sql` | Script de inicialização do banco de dados. |
+| `docker-compose.yml` | Orquestração dos containers PostgreSQL e API. |
+| `.env.example` | Exemplo de configuração da API, banco e URL usada pelo frontend. |
+| `start.bat` | Inicializa PostgreSQL e API pelo Windows; depois permite iniciar o frontend com `npm run dev`. |
 | `style.css` | Estilos globais e animações. |
 
 ## Tecnologias
@@ -105,7 +130,9 @@ Partidas existentes sem `question_order` continuam usando a ordem original das p
 - Vite 7
 - Tailwind CSS 3
 - Zustand para estado compartilhado no cliente
-- Supabase para persistência e sincronização em tempo real
+- PostgreSQL 16 para persistência
+- Express 4 para API REST
+- Docker para containerização
 
 ## Atualizações recentes
 
@@ -119,3 +146,4 @@ Partidas existentes sem `question_order` continuam usando a ordem original das p
 - Resultados finais exibidos mesmo quando menos de três equipes cruzam a linha de chegada.
 - Animações de largada, pit stop, troca de pneus e retorno à pista.
 - Melhorias de legibilidade, tamanhos de fonte, imagens de fundo e layout das telas de espera, entrada e perguntas.
+- **Persistência em PostgreSQL com API Express e Docker.**

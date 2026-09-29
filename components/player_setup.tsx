@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGameStore } from '../store/GameStore';
+import { DATABASE_SCHEMA_ERROR, useGameStore } from '../store/GameStore';
 import { F1_TEAMS, TEAM_COLORS } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 
@@ -45,12 +45,16 @@ export function PlayerSetup() {
         setError('Outra dupla acabou de escolher esta equipe. Selecione outra.');
       } else if (result === 'game_started') {
         setError('Esta partida já começou. Digite o código de uma sala que ainda esteja aguardando jogadores.');
+      } else if (result === 'migration_required') {
+        setError(DATABASE_SCHEMA_ERROR);
+      } else if (result === 'permission_denied') {
+        setError('O banco de dados bloqueou a entrada do jogador. Verifique a conexão com o servidor.');
       } else if (result === 'error') {
-        setError('Não foi possível entrar na partida. Tente novamente.');
+        setError('Não foi possível entrar na partida. Verifique sua conexão e tente novamente.');
       }
     } catch (setupError: unknown) {
       console.error('Error setting up player:', setupError);
-      setError('Não foi possível entrar na partida. Tente novamente.');
+      setError('Não foi possível entrar na partida. Verifique sua conexão e tente novamente.');
     } finally {
       setIsSubmitting(false);
     }

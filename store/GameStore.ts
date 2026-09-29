@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { database } from '../lib/database';
 import {
   questions,
   createQuestionOrder,
@@ -39,9 +39,17 @@ interface Answer {
 }
 
 type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
-type SetupPlayerResult = 'success' | 'team_taken' | 'game_started' | 'error';
+type SetupPlayerResult =
+  | 'success'
+  | 'team_taken'
+  | 'game_started'
+  | 'migration_required'
+  | 'permission_denied'
+  | 'error';
 const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
 const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
+export const DATABASE_SCHEMA_ERROR =
+  'A estrutura do banco de dados está desatualizada. Execute o docker-compose e tente novamente.';
 
 interface PlayerSession {
   playerId: string;
@@ -49,6 +57,7 @@ interface PlayerSession {
   gameCode: string;
   teamName: string;
   f1Team: string;
+  sessionToken: string;
 }
 
 interface GameStore {
@@ -96,6 +105,12 @@ function generateGameCode(): string {
   return code;
 }
 
+function generateSessionToken(): string {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function isSameGameSnapshot(current: Game | null, snapshot: Game): boolean {
   return current?.id === snapshot.id &&
     current.current_question_index === snapshot.current_question_index &&
@@ -126,44 +141,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
   createGame: async () => {
     const gameCode = generateGameCode();
     const adminId = Math.random().toString(36).substring(7);
+    const adminSessionToken = generateSessionToken();
     const questionOrder = createQuestionOrder();
     
-    const { data: game, error } = await supabase
-      .from('games')
-      .insert({
-        game_code: gameCode,
-        admin_id: adminId,
-        phase: 'waiting',
-        current_question_index: 0,
-        question_order: questionOrder,
-        question_revealed: false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating game:', error);
-      return;
-    }
+    const game = await database.createGame({
+      game_code: gameCode,
+      admin_id: adminId,
+      admin_session_token: adminSessionToken,
+      phase: 'waiting',
+      current_question_index: 0,
+      question_order: questionOrder,
+      question_revealed: false,
+    });
 
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(`${ADMIN_ID_PREFIX}${game.id}`, adminId);
+      window.localStorage.setItem(`${ADMIN_ID_PREFIX}${game.id}`, adminSessionToken);
     }
     set({ game, viewState: 'admin_game_code' });
   },
 
   joinGame: async (gameCode: string) => {
-    const { data: games, error } = await supabase
-      .from('games')
-      .select('*')
-      .eq('game_code', gameCode.toUpperCase())
-      .single();
+    const game = await database.getGameByCode(gameCode.toUpperCase());
 
-    if (error || !games || games.phase !== 'waiting') {
+    if (!game || game.phase !== 'waiting') {
       return false;
     }
 
-    set({ game: games });
+    set({ game });
     return true;
   },
 
@@ -171,38 +175,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return 'error';
 
-    const { data: latestGame, error: gameError } = await supabase
-      .from('games')
-      .select('phase')
-      .eq('id', game.id)
-      .maybeSingle();
+    const latestGame = await database.getGameById(game.id);
 
-    if (gameError) {
-      console.error('Error checking game phase:', gameError);
-      return 'error';
-    }
     if (!latestGame || latestGame.phase !== 'waiting') return 'game_started';
 
-    const { data: existingPlayers, error: lookupError } = await supabase
-      .from('players')
-      .select('id')
-      .eq('game_id', game.id)
-      .eq('f1_team', f1Team)
-      .limit(1);
+    const existingPlayers = await database.getPlayersByGame(game.id);
+    const teamTaken = existingPlayers.some(p => p.f1_team === f1Team);
 
-    if (lookupError) {
-      console.error('Error checking selected F1 team:', lookupError);
-      return 'error';
-    }
-
-    if (existingPlayers.length > 0) {
+    if (teamTaken) {
       await get().loadGameState();
       return 'team_taken';
     }
 
-    const { data: player, error } = await supabase
-      .from('players')
-      .insert({
+    const sessionToken = generateSessionToken();
+    try {
+      const player = await database.createPlayer({
         game_id: game.id,
         team_name: teamName,
         f1_team: f1Team,
@@ -210,11 +197,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
         skipped_turn: false,
         is_connected: true,
         last_seen: new Date().toISOString(),
-      })
-      .select()
-      .single();
+        player_session_token: sessionToken,
+      });
 
-    if (error) {
+      if (typeof window !== 'undefined') {
+        const session: PlayerSession = {
+          playerId: player.id,
+          gameId: game.id,
+          gameCode: game.game_code,
+          teamName: player.team_name,
+          f1Team: player.f1_team,
+          sessionToken,
+        };
+        window.localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(session));
+      }
+      set({ currentPlayer: player, viewState: 'player_waiting' });
+      return 'success';
+    } catch (error: any) {
       console.error('Error creating player:', error);
       if (error.code === 'P0001') return 'game_started';
       if (error.code === '23505') {
@@ -223,19 +222,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       return 'error';
     }
-
-    if (typeof window !== 'undefined') {
-      const session: PlayerSession = {
-        playerId: player.id,
-        gameId: game.id,
-        gameCode: game.game_code,
-        teamName: player.team_name,
-        f1Team: player.f1_team,
-      };
-      window.localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(session));
-    }
-    set({ currentPlayer: player, viewState: 'player_waiting' });
-    return 'success';
   },
 
   checkPlayerRecovery: async () => {
@@ -245,17 +231,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const stored = window.localStorage.getItem(PLAYER_SESSION_KEY);
       if (!stored) return;
       const session = JSON.parse(stored) as PlayerSession;
-      if (!session.playerId || !session.gameId) {
+      if (!session.playerId || !session.gameId || !session.sessionToken) {
         window.localStorage.removeItem(PLAYER_SESSION_KEY);
         return;
       }
 
-      const [{ data: player, error: playerError }, { data: game, error: gameError }] = await Promise.all([
-        supabase.from('players').select('*').eq('id', session.playerId).eq('game_id', session.gameId).maybeSingle(),
-        supabase.from('games').select('*').eq('id', session.gameId).maybeSingle(),
+      const sessionValid = await database.playerHeartbeat(
+        session.playerId,
+        session.sessionToken
+      );
+      if (!sessionValid) {
+        window.localStorage.removeItem(PLAYER_SESSION_KEY);
+        return;
+      }
+
+      const [player, game] = await Promise.all([
+        database.getPlayerByIdAndGame(session.playerId, session.gameId),
+        database.getGameById(session.gameId),
       ]);
-      if (playerError) throw playerError;
-      if (gameError) throw gameError;
       if (!player || !game) {
         window.localStorage.removeItem(PLAYER_SESSION_KEY);
         return;
@@ -268,6 +261,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           gameCode: game.game_code,
           teamName: player.team_name,
           f1Team: player.f1_team,
+          sessionToken: session.sessionToken,
         },
       });
     } catch (error) {
@@ -281,12 +275,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resumePlayerSession: async () => {
     const candidate = get().recoveryCandidate;
     if (!candidate) return;
-    const [{ data: game, error: gameError }, { data: player, error: playerError }] = await Promise.all([
-      supabase.from('games').select('*').eq('id', candidate.gameId).maybeSingle(),
-      supabase.from('players').select('*').eq('id', candidate.playerId).eq('game_id', candidate.gameId).maybeSingle(),
+    if (!candidate.sessionToken) {
+      set({ recoveryError: 'A sessão local não contém uma credencial válida. Esta equipe pode ter sido removida da sala.' });
+      return;
+    }
+    const sessionValid = await database.playerHeartbeat(
+      candidate.playerId,
+      candidate.sessionToken
+    );
+    if (!sessionValid) {
+      set({ recoveryError: 'Não foi possível validar a sessão desta equipe. Tente novamente.' });
+      return;
+    }
+    const [game, player] = await Promise.all([
+      database.getGameById(candidate.gameId),
+      database.getPlayerByIdAndGame(candidate.playerId, candidate.gameId),
     ]);
-    if (gameError || playerError || !game || !player) {
-      console.error('Error restoring the saved player session:', gameError || playerError);
+    if (!game || !player) {
       set({ recoveryError: 'Não foi possível restaurar esta partida. Tente novamente.' });
       return;
     }
@@ -309,23 +314,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startFreshPlayerSession: async () => {
     const candidate = get().recoveryCandidate;
     if (!candidate) return false;
-    const { data: removed, error } = await supabase.rpc('leave_waiting_player', {
-      p_player_id: candidate.playerId,
-    });
-    if (error || !removed) {
-      console.error('Error removing the previous player:', error);
+    const removed = await database.leaveWaitingPlayer(
+      candidate.playerId,
+      candidate.sessionToken
+    );
+    if (!removed) {
       set({
         recoveryError: 'Só é possível trocar de dupla enquanto a partida aguarda a largada. Sua equipe anterior foi mantida.',
       });
       return false;
     }
     if (typeof window !== 'undefined') window.localStorage.removeItem(PLAYER_SESSION_KEY);
-    const { data: game, error: gameError } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', candidate.gameId)
-      .maybeSingle();
-    if (gameError || !game || game.phase !== 'waiting') {
+    const game = await database.getGameById(candidate.gameId);
+    if (!game || game.phase !== 'waiting') {
       set({
         recoveryError: 'A dupla anterior foi removida, mas a sala deixou de aceitar novas equipes antes da configuração terminar. Entre em outra partida.',
         recoveryCandidate: null,
@@ -346,29 +347,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeOfflinePlayer: async (playerId: string) => {
     const { game } = get();
     if (!game || game.phase !== 'waiting' || typeof window === 'undefined') return false;
-    const adminId = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
-    if (!adminId) return false;
-    const { data, error } = await supabase.rpc('remove_offline_player', {
-      p_player_id: playerId,
-      p_admin_id: adminId,
-    });
-    if (error) {
-      console.error('Error removing offline player:', error);
-      return false;
-    }
-    if (data) await get().loadGameState();
-    return Boolean(data);
+    const adminSessionToken = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
+    if (!adminSessionToken) return false;
+    const removed = await database.removeOfflinePlayer(playerId, adminSessionToken);
+    if (removed) await get().loadGameState();
+    return removed;
   },
 
   heartbeatPlayer: async (playerId: string) => {
-    const { data, error } = await supabase.rpc('player_heartbeat', {
-      p_player_id: playerId,
-    });
-    if (error) {
-      console.error('Error refreshing player presence:', error);
-      return;
-    }
-    if (!data) {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(PLAYER_SESSION_KEY);
+    const session = stored ? JSON.parse(stored) as PlayerSession : null;
+    if (!session?.sessionToken || session.playerId !== playerId) return;
+    const valid = await database.playerHeartbeat(playerId, session.sessionToken);
+    if (!valid) {
       if (typeof window !== 'undefined') window.localStorage.removeItem(PLAYER_SESSION_KEY);
       set({ currentPlayer: null, viewState: 'player_join' });
     }
@@ -391,9 +383,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedOption: selectedOption,
     });
 
-    const { error } = await supabase
-      .from('answers')
-      .insert({
+    try {
+      await database.createAnswer({
         game_id: game.id,
         player_id: currentPlayer.id,
         question_index: game.current_question_index,
@@ -401,20 +392,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         is_correct: option.isCorrect,
       });
 
-    if (error) {
+      set({
+        hasAnswered: true,
+        showResult: false,
+        resultMessage: '',
+        isPenalty: false,
+        penaltyMessage: '',
+      });
+    } catch (error) {
       console.error('Error submitting answer:', error);
       set({ hasAnswered: false, showResult: false });
-      return;
     }
-
-    set({
-      hasAnswered: true,
-      showResult: false,
-      resultMessage: '',
-      isPenalty: false,
-      penaltyMessage: '',
-    });
-
   },
 
   revealAnswer: async () => {
@@ -427,20 +415,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       throw new Error(`Question ${game.current_question_index} was not found.`);
     }
 
-    const [{ data: gamePlayers, error: playersError }, { data: questionAnswers, error: answersError }] = await Promise.all([
-      supabase
-        .from('players')
-        .select('id, position, skipped_turn')
-        .eq('game_id', game.id),
-      supabase
-        .from('answers')
-        .select('player_id, selected_option')
-        .eq('game_id', game.id)
-        .eq('question_index', game.current_question_index),
+    const [gamePlayers, questionAnswers] = await Promise.all([
+      database.getPlayersByGame(game.id),
+      database.getAnswersByGameAndQuestion(game.id, game.current_question_index),
     ]);
 
-    if (playersError) throw playersError;
-    if (answersError) throw answersError;
     if (!gamePlayers?.length) {
       throw new Error('Cannot reveal an answer without players in this game.');
     }
@@ -497,26 +476,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
     });
 
-    const updateResults = await Promise.all(playerUpdates.map(({ id, position, skipped_turn }) =>
-      supabase
-        .from('players')
-        .update({ position, skipped_turn })
-        .eq('id', id),
-    ));
-    const failedUpdate = updateResults.find((result) => result.error);
-    if (failedUpdate?.error) throw failedUpdate.error;
+    await database.batchUpdatePlayers(playerUpdates);
 
-    const { data: revealedGame, error: revealError } = await supabase
-      .from('games')
-      .update({ question_revealed: true })
-      .eq('id', game.id)
-      .eq('current_question_index', game.current_question_index)
-      .eq('question_revealed', false)
-      .select('id')
-      .maybeSingle();
-
-    if (revealError) throw revealError;
-    if (revealedGame) await get().loadGameState();
+    await database.updateGame(game.id, { question_revealed: true });
+    await get().loadGameState();
   },
 
   nextQuestion: async () => {
@@ -526,54 +489,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
     const nextIndex = game.current_question_index + 1;
 
-    const [{ data: playersToCheck, error: playersError }, { data: currentAnswers, error: answersError }] = await Promise.all([
-      supabase
-        .from('players')
-        .select('id, position')
-        .eq('game_id', game.id)
-        .eq('skipped_turn', true),
-      supabase
-        .from('answers')
-        .select('player_id')
-        .eq('game_id', game.id)
-        .eq('question_index', game.current_question_index),
+    const [playersToCheck, currentAnswers] = await Promise.all([
+      database.getPlayersByGame(game.id),
+      database.getAnswersByGameAndQuestion(game.id, game.current_question_index),
     ]);
 
-    if (playersError) throw playersError;
-    if (answersError) throw answersError;
-
+    const skippedPlayers = playersToCheck?.filter(p => p.skipped_turn) ?? [];
     const answeredPlayerIds = new Set(currentAnswers?.map((answer) => answer.player_id));
-    const playersToUnskip = (playersToCheck ?? [])
+    const playersToUnskip = skippedPlayers
       .filter((player) => player.position < boardSize && !answeredPlayerIds.has(player.id))
       .map((player) => player.id);
 
-    const { data: updatedGame, error: gameError } = await supabase
-      .from('games')
-      .update({
-        current_question_index: nextIndex,
-        question_revealed: false,
-        phase: nextIndex >= (game.question_order?.length ?? questions.length) ? 'finished' : 'question',
-      })
-      .eq('id', game.id)
-      .eq('current_question_index', game.current_question_index)
-      .eq('question_revealed', true)
-      .select()
-      .maybeSingle();
-
-    if (gameError) throw gameError;
-    if (!updatedGame) return;
+    const updatedGame = await database.updateGame(game.id, {
+      current_question_index: nextIndex,
+      question_revealed: false,
+      phase: nextIndex >= (game.question_order?.length ?? questions.length) ? 'finished' : 'question',
+    });
 
     if (playersToUnskip.length > 0) {
-      const { error: skippedPlayersError } = await supabase
-        .from('players')
-        .update({ skipped_turn: false })
-        .eq('game_id', game.id)
-        .in('id', playersToUnskip);
-
-      if (skippedPlayersError) {
-        console.error('Error clearing completed skipped turns:', skippedPlayersError);
-        throw skippedPlayersError;
-      }
+      const unskipUpdates = playersToUnskip.map(id => ({
+        id,
+        position: playersToCheck.find(p => p.id === id)?.position ?? 0,
+        skipped_turn: false,
+      }));
+      await database.batchUpdatePlayers(unskipUpdates);
     }
 
     const currentPlayer = get().currentPlayer;
@@ -600,33 +539,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
 
-    const { data: startedGame, error } = await supabase
-      .from('games')
-      .update({ phase: 'question' })
-      .eq('id', game.id)
-      .eq('phase', 'waiting')
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    if (startedGame) {
-      set({ game: startedGame });
-    } else {
-      await get().loadGameState();
-    }
+    const startedGame = await database.updateGame(game.id, { phase: 'question' });
+    set({ game: startedGame });
   },
 
   loadGameState: async () => {
     const { game, currentPlayer } = get();
     if (!game) return;
 
-    const { data: updatedGame, error: gameError } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', game.id)
-      .single();
-
-    if (gameError || !updatedGame) return;
+    const updatedGame = await database.getGameById(game.id);
+    if (!updatedGame) return;
 
     const latestGame = get().game;
     if (
@@ -657,10 +579,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         : {}),
     });
 
-    const { data: players } = await supabase
-      .from('players')
-      .select('*')
-      .eq('game_id', game.id);
+    const players = await database.getPlayersByGame(game.id);
 
     if (!isSameGameSnapshot(get().game, updatedGame)) return;
 
@@ -683,11 +602,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (currentPlayer) {
-      const { data: updatedPlayer } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', currentPlayer.id)
-        .single();
+      const updatedPlayer = await database.getPlayerById(currentPlayer.id);
 
       if (!isSameGameSnapshot(get().game, updatedGame)) return;
 
@@ -703,10 +618,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // Load all answers for admin view
-    const { data: allAnswers } = await supabase
-      .from('answers')
-      .select('*')
-      .eq('game_id', game.id);
+    const allAnswers = await database.getAnswersByGame(game.id);
 
     if (!isSameGameSnapshot(get().game, updatedGame)) return;
 
@@ -741,21 +653,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return () => {};
 
-    const gameChannel = supabase
-      .channel(`game-${game.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `id=eq.${game.id}` }, () => {
-        get().loadGameState();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${game.id}` }, () => {
-        get().loadGameState();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'answers', filter: `game_id=eq.${game.id}` }, () => {
-        get().loadGameState();
-      })
-      .subscribe();
+    // Polling keeps the game state synchronized across clients.
+    const interval = setInterval(() => {
+      get().loadGameState();
+    }, 2000);
 
     return () => {
-      supabase.removeChannel(gameChannel);
+      clearInterval(interval);
     };
   },
 }));

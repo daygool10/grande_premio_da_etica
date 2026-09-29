@@ -24,6 +24,9 @@ export function AdminWaiting() {
     try {
       const removed = await removeOfflinePlayer(playerId);
       if (!removed) setRemoveError('A equipe voltou a se conectar ou não pôde ser removida. Atualize a lista e tente novamente.');
+    } catch (error) {
+      console.error('Error removing offline player from the waiting room:', error);
+      setRemoveError('Não foi possível remover a equipe offline. Tente novamente.');
     } finally {
       setRemovingPlayerId(null);
     }

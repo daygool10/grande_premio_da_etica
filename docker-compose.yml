@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: etica_f1_postgres
+    environment:
+      POSTGRES_USER: daya
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: etica_f1
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U daya -d etica_f1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: etica_f1_api
+    environment:
+      DATABASE_URL: postgresql://daya:1234@postgres:5432/etica_f1
+      PORT: ${PORT:-3002}
+      PGSSLMODE: disable
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
