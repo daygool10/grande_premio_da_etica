@@ -18,8 +18,8 @@ const answer = (
   question_index: number,
   is_correct: boolean,
   selected_option: number,
-  answered_at?: string,
-): AnswerLike => ({ player_id, question_index, is_correct, selected_option, answered_at });
+  created_at?: string,
+): AnswerLike => ({ player_id, question_index, is_correct, selected_option, created_at });
 const player = (id: string, position: number, team_name: string): PlayerLike => ({ id, position, team_name });
 
 describe('questionDeltas', () => {

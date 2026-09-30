@@ -50,7 +50,7 @@ export interface TimedAnswer {
   player_id: string;
   question_index: number;
   is_correct: boolean;
-  answered_at?: string;
+  created_at?: string;
 }
 
 // Ranks only correct answers for the given question. Missing or unparseable
@@ -67,8 +67,8 @@ export function rankCorrectAnswersForQuestion(
     .map((answer, inputIndex) => ({ answer, inputIndex }));
 
   correctAnswers.sort((a, b) => {
-    const aTime = parseAnsweredAt(a.answer.answered_at);
-    const bTime = parseAnsweredAt(b.answer.answered_at);
+    const aTime = parseCreatedAt(a.answer.created_at);
+    const bTime = parseCreatedAt(b.answer.created_at);
     if (aTime !== bTime) return aTime - bTime;
     if (a.answer.player_id !== b.answer.player_id) {
       return a.answer.player_id < b.answer.player_id ? -1 : 1;
@@ -81,7 +81,7 @@ export function rankCorrectAnswersForQuestion(
   return new Map(correctAnswers.map(({ answer }, rank) => [answer.player_id, rank + 1]));
 }
 
-function parseAnsweredAt(value: string | undefined): number {
+function parseCreatedAt(value: string | undefined): number {
   if (value === undefined) return Infinity;
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? Infinity : timestamp;

@@ -19,8 +19,8 @@ const answer = (
   player_id: string,
   question_index: number,
   is_correct: boolean,
-  answered_at?: string,
-): TimedAnswer => ({ player_id, question_index, is_correct, answered_at });
+  created_at?: string,
+): TimedAnswer => ({ player_id, question_index, is_correct, created_at });
 
 // One correct option carrying `advance`; wrong options use advance 0 so the
 // distribution stays comparable to the real question set in data/questions.tsx.
@@ -120,7 +120,7 @@ describe('rankCorrectAnswersForQuestion', () => {
     expect(ranks.size).toBe(2);
   });
 
-  it('puts answers with missing or unparseable answered_at last', () => {
+  it('puts answers with missing or unparseable created_at last', () => {
     const answers = [
       answer('late', 1, true),
       answer('first', 1, true, '2024-01-01T00:00:00Z'),

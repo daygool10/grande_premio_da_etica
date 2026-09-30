@@ -1,5 +1,6 @@
 import { database } from '../lib/database';
-import { questions, getBoardSize, getQuestionAt } from '../data/questions';
+import { questions, getQuestionAt } from '../data/questions';
+import { finishLineForOrder } from '../lib/raceScoring';
 import { Game } from './gameTypes';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
@@ -120,8 +121,8 @@ export function createSyncActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
         }
       }
 
-      const boardSize = getBoardSize(updatedGame.question_order?.length ?? questions.length);
-      const finished = players?.filter(p => p.position >= boardSize) || [];
+      const finishLine = finishLineForOrder(updatedGame.question_order, questions);
+      const finished = players?.filter(p => p.position >= finishLine) || [];
       set({ finishedPlayers: finished });
     }
   },

@@ -1,18 +1,20 @@
 import { database } from '../lib/database';
-import { questions, getBoardSize, getQuestionAt } from '../data/questions';
+import { questions, getQuestionAt } from '../data/questions';
+import { finishLineForOrder, scoreReveal } from '../lib/raceScoring';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
 export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'revealAnswer' | 'nextQuestion'> {
   return {
   revealAnswer: async () => {
-    const { game, players: cachedPlayers } = get();
+    const { game } = get();
     if (!game || game.question_revealed) return;
 
-    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
     const question = getQuestionAt(game.current_question_index, game.question_order);
     if (!question) {
       throw new Error(`Question ${game.current_question_index} was not found.`);
     }
+
+    const finishLine = finishLineForOrder(game.question_order, questions);
 
     const [gamePlayers, questionAnswers] = await Promise.all([
       database.getPlayersByGame(game.id),
@@ -25,58 +27,20 @@ export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
 
     const answersByPlayer = new Map(questionAnswers?.map((answer) => [answer.player_id, answer]));
     const eligiblePlayers = gamePlayers.filter(
-      (player) => !player.skipped_turn && player.position < boardSize,
+      (player) => !player.skipped_turn && player.position < finishLine,
     );
     if (eligiblePlayers.some((player) => !answersByPlayer.has(player.id))) {
       throw new Error('Cannot reveal an answer until every player has submitted one.');
     }
 
-    const cachedPlayersById = new Map(cachedPlayers.map((player) => [player.id, player]));
-    const playerUpdates = gamePlayers.map((player) => {
-      if (player.skipped_turn || player.position >= boardSize) {
-        return {
-          id: player.id,
-          position: player.position,
-          skipped_turn: player.skipped_turn,
-        };
-      }
-
-      const answer = answersByPlayer.get(player.id);
-      const option = answer ? question.options[answer.selected_option] : undefined;
-      if (!option) {
-        throw new Error(`Invalid answer option for player ${player.id}.`);
-      }
-
-      const cachedPlayer = cachedPlayersById.get(player.id);
-      const startingPosition = cachedPlayer?.position ?? player.position;
-      let position = startingPosition;
-      if (option.isCorrect) {
-        position = Math.min(startingPosition + option.advance, boardSize);
-      } else {
-        switch (option.penaltyType) {
-          case 'back1':
-            position = Math.max(0, startingPosition - 1);
-            break;
-          case 'back2':
-            position = Math.max(0, startingPosition - 2);
-            break;
-          case 'start':
-            position = 0;
-            break;
-        }
-      }
-
-      return {
-        id: player.id,
-        position,
-        skipped_turn: option.penaltyType === 'skip'
-          ? true
-          : (cachedPlayer?.skipped_turn ?? player.skipped_turn),
-      };
-    });
+    const playerUpdates = scoreReveal(
+      question.options,
+      gamePlayers,
+      questionAnswers ?? [],
+      game.current_question_index,
+    );
 
     await database.batchUpdatePlayers(playerUpdates);
-
     await database.updateGame(game.id, { question_revealed: true });
     await get().loadGameState();
   },
@@ -85,7 +49,7 @@ export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
     const { game } = get();
     if (!game) return;
 
-    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
+    const finishLine = finishLineForOrder(game.question_order, questions);
     const nextIndex = game.current_question_index + 1;
 
     const [playersToCheck, currentAnswers] = await Promise.all([
@@ -96,7 +60,7 @@ export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
     const skippedPlayers = playersToCheck?.filter(p => p.skipped_turn) ?? [];
     const answeredPlayerIds = new Set(currentAnswers?.map((answer) => answer.player_id));
     const playersToUnskip = skippedPlayers
-      .filter((player) => player.position < boardSize && !answeredPlayerIds.has(player.id))
+      .filter((player) => player.position < finishLine && !answeredPlayerIds.has(player.id))
       .map((player) => player.id);
 
     const updatedGame = await database.updateGame(game.id, {
