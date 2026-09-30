@@ -1,4 +1,4 @@
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 
 interface TeamPinProps {
   team: string;

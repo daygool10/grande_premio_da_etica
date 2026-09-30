@@ -10,6 +10,7 @@ interface CircuitBoardPlayer {
 interface CircuitBoardProps {
   players: CircuitBoardPlayer[];
   boardSize: number;
+  compact?: boolean;
 }
 
 const TRACK_PATH = [
@@ -63,12 +64,12 @@ function getTrackPositions(boardSize: number) {
   });
 }
 
-export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
+export function CircuitBoard({ players, boardSize, compact }: CircuitBoardProps) {
   const positions = getTrackPositions(boardSize);
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
-      <div className="relative isolate h-[380px] min-w-[720px] overflow-hidden bg-[#10251f] sm:h-[440px]">
+      <div className={`relative isolate overflow-hidden bg-[#10251f] min-w-[720px] sm:h-[440px] ${compact ? 'h-[190px]' : 'h-[380px]'}`}>
         <svg
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"

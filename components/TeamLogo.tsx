@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TEAM_LOGOS } from '../lib/teamLogos';
+import { TEAM_LOGOS } from '../lib/teams';
 
 interface TeamLogoProps {
   team: string;

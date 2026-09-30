@@ -1,14 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
+import { TEAM_COLORS } from '../lib/teams';
 import {
-  TEAM_COLORS,
   getBoardSize,
   questions,
   getQuestionAt,
+  type Question,
 } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
+import { AdminDebrief } from './AdminDebrief';
 import { sortFinishers } from '../lib/finishOrder';
+
+// Her games shuffle the question set into game.question_order; the debrief
+// replay must walk question ids in the order the game actually asked them.
+function buildOrderedQuestions(questionOrder?: readonly number[] | null): Question[] {
+  if (!questionOrder || questionOrder.length === 0) return questions;
+  return questionOrder
+    .map((id) => questions.find((question) => question.id === id))
+    .filter((question): question is Question => question !== undefined);
+}
 
 export function AdminPlaying() {
   const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers } = useGameStore();
@@ -32,6 +43,7 @@ export function AdminPlaying() {
     game?.current_question_index || 0,
     game?.question_order,
   );
+  const orderedQuestions = buildOrderedQuestions(game?.question_order);
   const questionCount = game?.question_order?.length ?? questions.length;
   const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
 
@@ -101,8 +113,18 @@ export function AdminPlaying() {
               <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
               <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
             </div>
-            <CircuitBoard players={players} boardSize={boardSize} />
-        </section>
+<CircuitBoard players={players} boardSize={boardSize} />
+            </section>
+
+        {game?.question_revealed && (
+          <AdminDebrief
+            players={players}
+            answers={answers}
+            question={q}
+            questionIndex={game?.current_question_index ?? 0}
+            orderedQuestions={orderedQuestions}
+          />
+        )}
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           {/* Question Section */}
