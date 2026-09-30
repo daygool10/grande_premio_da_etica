@@ -23,7 +23,7 @@ function buildOrderedQuestions(questionOrder?: readonly number[] | null): Questi
 export function PlayerPlaying() {
   const { 
     game, currentPlayer, currentQuestion, players, 
-    answers, selectedOption, hasAnswered, showResult,
+    answers, selectedOption, hasAnswered,
     selectOption, submitAnswer, loadGameState, setViewState
   } = useGameStore();
   const [displayQuestionIndex, setDisplayQuestionIndex] = useState(
@@ -34,6 +34,8 @@ export function PlayerPlaying() {
     () => buildOrderedQuestions(game?.question_order),
     [game?.question_order],
   );
+
+  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   const lastCueQuestion = useRef<number | null>(null);
 
@@ -69,10 +71,11 @@ export function PlayerPlaying() {
   }, [game?.phase, setViewState]);
 
   useEffect(() => {
-    if (!game || game.current_question_index <= displayQuestionIndex) return;
+    const questionIndex = game?.current_question_index;
+    if (questionIndex === undefined || questionIndex <= displayQuestionIndex) return;
 
     const timer = window.setTimeout(() => {
-      setDisplayQuestionIndex(game.current_question_index);
+      setDisplayQuestionIndex(questionIndex);
     }, 1200);
 
     return () => window.clearTimeout(timer);
@@ -93,11 +96,11 @@ export function PlayerPlaying() {
       );
     const finishAnswerRevealed = game?.question_revealed ||
       game?.phase === 'finished' ||
-      (lastAnswer !== null && game && game.current_question_index > lastAnswer.question_index);
+      (lastAnswer !== null && (game?.current_question_index ?? -1) > lastAnswer.question_index);
 
     if (
       finishAnswerRevealed &&
-      currentPlayer &&
+      currentPlayer?.id !== undefined &&
       hasReachedFinishLine(currentPlayer.position, finishLine)
     ) {
       setViewState('player_finished');
@@ -108,12 +111,12 @@ export function PlayerPlaying() {
     game?.current_question_index,
     currentPlayer?.id,
     currentPlayer?.position,
+    finishLine,
     answers,
     setViewState,
   ]);
 
   const q = currentQuestion;
-  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   if (!q || !currentPlayer) {
     return (

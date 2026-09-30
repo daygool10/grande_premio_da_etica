@@ -25,12 +25,12 @@ export default function App() {
   }, [checkPlayerRecovery]);
 
   useEffect(() => {
-    if (!game) return;
+    if (!game?.id) return;
     return subscribeToGame();
   }, [game?.id, subscribeToGame]);
 
   useEffect(() => {
-    if (!currentPlayer) return;
+    if (!currentPlayer?.id) return;
     const sendHeartbeat = () => void heartbeatPlayer(currentPlayer.id);
     sendHeartbeat();
     const interval = window.setInterval(sendHeartbeat, 20_000);

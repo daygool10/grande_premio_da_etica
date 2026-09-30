@@ -6,6 +6,14 @@ type StartSequence = 'waiting' | 'tire-exit' | 'lights-red' | 'lights-green';
 export function PlayerWaiting() {
   const { game, currentPlayer, players, loadGameState, setViewState } = useGameStore();
   const [startSequence, setStartSequence] = useState<StartSequence>('waiting');
+  const [seenGamePhase, setSeenGamePhase] = useState<string | undefined>(undefined);
+
+  if (seenGamePhase !== game?.phase) {
+    setSeenGamePhase(game?.phase);
+    if (game?.phase === 'question' && startSequence === 'waiting') {
+      setStartSequence('tire-exit');
+    }
+  }
 
   useEffect(() => {
     loadGameState();
@@ -14,13 +22,8 @@ export function PlayerWaiting() {
   useEffect(() => {
     if (game?.phase === 'finished') {
       setViewState('player_finished');
-      return;
     }
-
-    if (game?.phase !== 'question' || startSequence !== 'waiting') return;
-
-    setStartSequence('tire-exit');
-  }, [game?.phase, startSequence, setViewState]);
+  }, [game?.phase, setViewState]);
 
   useEffect(() => {
     if (startSequence === 'waiting') return;

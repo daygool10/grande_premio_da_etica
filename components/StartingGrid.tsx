@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { F1Car } from './F1Car';
 import { F1Semaphore } from './F1Semaphore';
 import { TEAM_COUNT } from '../lib/teams';
@@ -15,21 +15,28 @@ interface StartingGridProps {
 
 export function StartingGrid({ players }: StartingGridProps) {
   const [entryOrder, setEntryOrder] = useState<string[]>([]);
+  const [seenPlayerIds, setSeenPlayerIds] = useState<string[] | null>(null);
 
-  useEffect(() => {
+  const currentPlayerIds = players.map((player) => player.id);
+
+  if (
+    seenPlayerIds === null ||
+    currentPlayerIds.some((id) => !seenPlayerIds.includes(id)) ||
+    seenPlayerIds.some((id) => !currentPlayerIds.includes(id))
+  ) {
+    setSeenPlayerIds(currentPlayerIds);
     setEntryOrder((currentOrder) => {
-      const activeIds = new Set(players.map((player) => player.id));
+      const activeIds = new Set(currentPlayerIds);
       const retainedIds = currentOrder.filter((id) => activeIds.has(id));
       const knownIds = new Set(retainedIds);
-      const newIds = players
-        .map((player) => player.id)
+      const newIds = currentPlayerIds
         .filter((id) => !knownIds.has(id));
 
       return newIds.length > 0 || retainedIds.length !== currentOrder.length
         ? [...retainedIds, ...newIds]
         : currentOrder;
     });
-  }, [players]);
+  }
 
   const playersById = new Map(players.map((player) => [player.id, player]));
   const orderedPlayers = [

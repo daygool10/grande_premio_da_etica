@@ -97,10 +97,11 @@ export function createLobbyActions(set: GameStoreSet, get: GameStoreGet): Pick<G
       }
       set({ currentPlayer: player, viewState: 'player_waiting' });
       return 'success';
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating player:', error);
-      if (error.code === 'P0001') return 'game_started';
-      if (error.code === '23505') {
+      const code = (error as { code?: string } | null)?.code;
+      if (code === 'P0001') return 'game_started';
+      if (code === '23505') {
         await get().loadGameState();
         return 'team_taken';
       }

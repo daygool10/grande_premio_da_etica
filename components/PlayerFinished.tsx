@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { questions } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
@@ -7,10 +7,32 @@ import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
 import { PodiumArrival } from './PodiumArrival';
 import { playCue } from '../lib/sound';
 
+interface ConfettiPiece {
+  id: number;
+  left: number;
+  animationDelay: number;
+  animationDuration: number;
+  color: string;
+  rotation: number;
+}
+
+function buildConfetti(): ConfettiPiece[] {
+  const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+  return Array.from({ length: 50 }, (_, id) => ({
+    id,
+    left: Math.random() * 100,
+    animationDelay: Math.random() * 2,
+    animationDuration: 2 + Math.random() * 2,
+    color: colors[Math.floor(Math.random() * 6)],
+    rotation: Math.random() * 360,
+  }));
+}
+
 export function PlayerFinished() {
   const { game, players, currentPlayer, answers, loadGameState } = useGameStore();
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
+  const confetti = useMemo(() => buildConfetti(), []);
   const finishLine = finishLineForOrder(game?.question_order, questions);
 
   useEffect(() => {
@@ -70,22 +92,22 @@ export function PlayerFinished() {
       {/* Confetti Animation */}
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50">
-          {Array.from({ length: 50 }).map((_, i) => (
+          {confetti.map((piece) => (
             <div
-              key={i}
+              key={piece.id}
               className="absolute animate-confetti"
               style={{
-                left: `${Math.random() * 100}%`,
+                left: `${piece.left}%`,
                 top: `-10%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`,
+                animationDelay: `${piece.animationDelay}s`,
+                animationDuration: `${piece.animationDuration}s`,
               }}
             >
               <div
                 className="w-3 h-3 rounded-sm"
                 style={{
-                  backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'][Math.floor(Math.random() * 6)],
-                  transform: `rotate(${Math.random() * 360}deg)`,
+                  backgroundColor: piece.color,
+                  transform: `rotate(${piece.rotation}deg)`,
                 }}
               />
             </div>

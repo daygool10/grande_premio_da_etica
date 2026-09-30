@@ -1,5 +1,9 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
+interface ApiError extends Error {
+  code?: string;
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${API_URL}${endpoint}`;
   const response = await fetch(url, {
@@ -11,8 +15,8 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error: any = new Error(errorData.error || `HTTP ${response.status}`);
+    const errorData: { error?: string; code?: string } = await response.json().catch(() => ({}));
+    const error = new Error(errorData.error || `HTTP ${response.status}`) as ApiError;
     error.code = errorData.code;
     throw error;
   }

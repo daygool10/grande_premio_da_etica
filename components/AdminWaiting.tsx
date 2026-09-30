@@ -10,10 +10,16 @@ export function AdminWaiting() {
   const [isStarting, setIsStarting] = useState(false);
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState('');
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     loadGameState();
   }, [loadGameState]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 5_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const handleRemoveOfflinePlayer = async (playerId: string) => {
     if (removingPlayerId) return;
@@ -87,7 +93,7 @@ export function AdminWaiting() {
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {players.map((player) => {
                   const isOffline = !player.last_seen ||
-                    Date.now() - new Date(player.last_seen).getTime() > 90_000;
+                    now - new Date(player.last_seen).getTime() > 90_000;
                   return (
                     <div
                       key={player.id}
