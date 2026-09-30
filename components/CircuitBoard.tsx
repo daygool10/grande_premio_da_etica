@@ -9,7 +9,7 @@ interface CircuitBoardPlayer {
 
 interface CircuitBoardProps {
   players: CircuitBoardPlayer[];
-  boardSize: number;
+  finishLine: number;
   compact?: boolean;
 }
 
@@ -27,7 +27,7 @@ const TRACK_PATH = [
   { x: 1056, y: 380 },
 ];
 
-function getTrackPositions(boardSize: number) {
+function getTrackPositions(finishLine: number) {
   const segmentLengths = TRACK_PATH.slice(1).map((point, index) => {
     const previous = TRACK_PATH[index];
     return Math.hypot(point.x - previous.x, point.y - previous.y);
@@ -40,8 +40,8 @@ function getTrackPositions(boardSize: number) {
   const totalLength = cumulativeLengths[cumulativeLengths.length - 1];
   let segmentIndex = 0;
 
-  return Array.from({ length: boardSize + 1 }, (_, position) => {
-    const distance = (totalLength * position) / boardSize;
+  return Array.from({ length: finishLine + 1 }, (_, position) => {
+    const distance = (totalLength * position) / finishLine;
     while (
       segmentIndex < segmentLengths.length - 1 &&
       cumulativeLengths[segmentIndex + 1] < distance
@@ -64,8 +64,8 @@ function getTrackPositions(boardSize: number) {
   });
 }
 
-export function CircuitBoard({ players, boardSize, compact }: CircuitBoardProps) {
-  const positions = getTrackPositions(boardSize);
+export function CircuitBoard({ players, finishLine, compact }: CircuitBoardProps) {
+  const positions = getTrackPositions(finishLine);
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">

@@ -401,10 +401,6 @@ export const questions: Question[] = [
 
 export const MAX_QUESTIONS_PER_GAME = 20;
 
-export function getBoardSize(questionCount: number): number {
-  return Math.max(10, Math.ceil(questionCount * 1.5));
-}
-
 export function createQuestionOrder(): number[] {
   const shuffledQuestions = [...questions];
 
@@ -435,5 +431,4 @@ export function getQuestionAt(
   return questions.find((question) => question.id === questionId) ?? null;
 }
 
-export const BOARD_SIZE = getBoardSize(MAX_QUESTIONS_PER_GAME);
 export const MAX_TEAMS = 11;

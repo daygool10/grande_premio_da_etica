@@ -46,6 +46,12 @@ export function finishLineForOrder(
   return raceFinishLine(dealtQuestions(questionOrder, allQuestions));
 }
 
+// The single finished predicate every screen uses. A position of exactly the
+// target counts as a finish, so the comparison is >= and never >.
+export function hasReachedFinishLine(position: number, finishLine: number): boolean {
+  return position >= finishLine;
+}
+
 export interface ScorablePlayer {
   id: string;
   position: number;

@@ -3,15 +3,16 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { TEAM_COLORS } from '../lib/teams';
 import { sortFinishers } from '../lib/finishOrder';
+import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
 import { F1Semaphore } from './F1Semaphore';
-import { getBoardSize, questions } from '../data/questions';
+import { questions } from '../data/questions';
 import { PodiumArrival } from './PodiumArrival';
 import { playCue } from '../lib/sound';
 
 export function AdminFinished() {
   const { game, players, answers, loadGameState, setViewState } = useGameStore();
   const [showPodium, setShowPodium] = useState(false);
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   useEffect(() => {
     loadGameState();
@@ -26,7 +27,7 @@ export function AdminFinished() {
     playCue('podium');
   }, [showPodium]);
 
-  const finishedPlayers = players.filter(player => player.position >= boardSize);
+  const finishedPlayers = players.filter(player => hasReachedFinishLine(player.position, finishLine));
   const podiumSize = Math.max(1, Math.min(3, players.length));
   const podiumReady = game?.phase === 'finished' || finishedPlayers.length >= podiumSize;
 
@@ -34,7 +35,7 @@ export function AdminFinished() {
   const sortedPlayers = [
     ...orderedFinishers,
     ...players
-      .filter(player => player.position < boardSize)
+      .filter(player => player.position < finishLine)
       .sort((a, b) => b.position - a.position),
   ];
   const podium = orderedFinishers.slice(0, 3);
@@ -96,7 +97,7 @@ export function AdminFinished() {
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
                   <span className="font-bold flex-1 text-left">{p.team_name}</span>
                   <span className="text-gray-400 text-sm">{p.f1_team}</span>
-                  <span className="text-sm font-bold">{p.position}/{boardSize}</span>
+                  <span className="text-sm font-bold">{p.position}/{finishLine}</span>
                 </div>
               ))}
             </div>

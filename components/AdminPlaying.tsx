@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { TEAM_COLORS } from '../lib/teams';
 import {
-  getBoardSize,
   questions,
   getQuestionAt,
   type Question,
@@ -11,6 +10,7 @@ import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 import { AdminDebrief } from './AdminDebrief';
 import { sortFinishers } from '../lib/finishOrder';
+import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
 
 // Her games shuffle the question set into game.question_order; the debrief
 // replay must walk question ids in the order the game actually asked them.
@@ -43,16 +43,16 @@ export function AdminPlaying() {
   );
   const orderedQuestions = buildOrderedQuestions(game?.question_order);
   const questionCount = game?.question_order?.length ?? questions.length;
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   const eligiblePlayers = players.filter(
-    (player) => !player.skipped_turn && player.position < boardSize,
+    (player) => !player.skipped_turn && player.position < finishLine,
   );
   const answeredCount = eligiblePlayers.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
   const allPlayersAnswered = players.length > 0 && answeredCount === eligiblePlayers.length;
-  const finishedPlayers = players.filter(player => player.position >= boardSize);
+  const finishedPlayers = players.filter(player => hasReachedFinishLine(player.position, finishLine));
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
   const podiumSize = Math.max(1, Math.min(3, players.length));
   const podiumReady = finishedPlayers.length >= podiumSize;
@@ -111,7 +111,7 @@ export function AdminPlaying() {
               <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
               <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
             </div>
-<CircuitBoard players={players} boardSize={boardSize} />
+<CircuitBoard players={players} finishLine={finishLine} />
             </section>
 
         {game?.question_revealed && (
@@ -219,11 +219,11 @@ export function AdminPlaying() {
                         <p className="text-gray-400 text-xs">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold">{p.position}/{boardSize}</p>
+                        <p className="text-sm font-bold">{p.position}/{finishLine}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>
-                          {p.position >= boardSize
+                          {hasReachedFinishLine(p.position, finishLine)
                             ? 'Finalizou'
                             : p.skipped_turn
                               ? 'Punição'

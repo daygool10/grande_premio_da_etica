@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, questions, type Question } from '../data/questions';
+import { questions, type Question } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
 import { questionDeltas, overtakeReport } from '../lib/debrief';
+import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
 import { playCue } from '../lib/sound';
 import { TeamLogo } from './TeamLogo';
 import { PlayerQuestion } from './PlayerQuestion';
@@ -97,7 +98,7 @@ export function PlayerPlaying() {
     if (
       finishAnswerRevealed &&
       currentPlayer &&
-      currentPlayer.position >= boardSize
+      hasReachedFinishLine(currentPlayer.position, finishLine)
     ) {
       setViewState('player_finished');
     }
@@ -112,7 +113,7 @@ export function PlayerPlaying() {
   ]);
 
   const q = currentQuestion;
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   if (!q || !currentPlayer) {
     return (
@@ -172,13 +173,13 @@ export function PlayerPlaying() {
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-400">Pergunta {(game?.current_question_index || 0) + 1}</p>
-            <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/{boardSize}</p>
+            <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/{finishLine}</p>
           </div>
         </div>
 
         {/* Board */}
         <div className="relative mb-4">
-          <CircuitBoard players={players} boardSize={boardSize} compact />
+          <CircuitBoard players={players} finishLine={finishLine} compact />
           <PlayerScoreFlash
             delta={roundDebrief?.delta ?? null}
             overtake={roundDebrief?.overtake ?? null}

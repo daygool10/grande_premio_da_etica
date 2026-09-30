@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, questions } from '../data/questions';
+import { questions } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
 import { sortFinishers } from '../lib/finishOrder';
+import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
 import { PodiumArrival } from './PodiumArrival';
 import { playCue } from '../lib/sound';
 
@@ -10,7 +11,7 @@ export function PlayerFinished() {
   const { game, players, currentPlayer, answers, loadGameState } = useGameStore();
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const finishLine = finishLineForOrder(game?.question_order, questions);
 
   useEffect(() => {
     loadGameState();
@@ -38,14 +39,14 @@ export function PlayerFinished() {
         currentPlayer,
       ]
     : players;
-  const finishedPlayers = playersWithCurrent.filter(player => player.position >= boardSize);
+  const finishedPlayers = playersWithCurrent.filter(player => hasReachedFinishLine(player.position, finishLine));
   const podiumSize = Math.max(1, Math.min(3, playersWithCurrent.length));
   const podiumReady = game?.phase === 'finished' || (finishedPlayers.length >= podiumSize && podiumSize > 0);
   const orderedFinishers = sortFinishers(finishedPlayers, answers);
   const sortedPlayers = [
     ...orderedFinishers,
     ...playersWithCurrent
-      .filter(player => player.position < boardSize)
+      .filter(player => player.position < finishLine)
       .sort((a, b) => b.position - a.position),
   ];
 
@@ -105,13 +106,13 @@ export function PlayerFinished() {
           
           <h2 className="text-5xl font-black mb-2">
             <span className="text-yellow-400">
-              {currentPlayer && currentPlayer.position >= boardSize ? 'CHEGOU!' : 'FIM DA CORRIDA'}
+              {currentPlayer && hasReachedFinishLine(currentPlayer.position, finishLine) ? 'CHEGOU!' : 'FIM DA CORRIDA'}
             </span>
           </h2>
           <p className="text-gray-400 mb-4 text-lg">
-            {currentPlayer && currentPlayer.position >= boardSize
+            {currentPlayer && hasReachedFinishLine(currentPlayer.position, finishLine)
               ? `${currentPlayer.team_name} cruzou a linha de chegada!`
-              : `A corrida terminou. ${currentPlayer?.team_name} avançou ${currentPlayer?.position ?? 0} de ${boardSize} casas.`}
+              : `A corrida terminou. ${currentPlayer?.team_name} avançou ${currentPlayer?.position ?? 0} de ${finishLine} pontos.`}
           </p>
           
           <div className="inline-block bg-gray-800/50 border border-yellow-500/50 rounded-xl px-8 py-4 mb-8">
