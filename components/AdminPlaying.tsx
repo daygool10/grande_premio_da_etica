@@ -29,8 +29,6 @@ export function AdminPlaying() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 1500);
-    return () => clearInterval(interval);
   }, [loadGameState]);
 
   useEffect(() => {

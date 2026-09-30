@@ -56,6 +56,7 @@ export interface PlayerSession {
 export interface GameStore {
   viewState: ViewState;
   game: Game | null;
+  streamFallback: boolean;
   players: Player[];
   currentPlayer: Player | null;
   answers: Answer[];

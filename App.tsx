@@ -16,7 +16,7 @@ export default function App() {
   const {
     viewState, game, currentPlayer, subscribeToGame, checkPlayerRecovery,
     recoveryCandidate, isCheckingRecovery, recoveryError, resumePlayerSession,
-    startFreshPlayerSession, heartbeatPlayer,
+    startFreshPlayerSession, heartbeatPlayer, streamFallback,
   } = useGameStore();
   const [isChangingIdentity, setIsChangingIdentity] = useState(false);
 
@@ -130,5 +130,15 @@ export default function App() {
     }
   })();
 
-  return <>{view}<SoundPrompt /></>;
+  return (
+    <>
+      {view}
+      {streamFallback && (
+        <div className="pointer-events-none fixed bottom-3 right-3 z-50 rounded-full bg-yellow-800/90 px-4 py-2 text-xs font-bold text-yellow-100 shadow-lg">
+          ⚠️ Atualizações lentas — conexão instável
+        </div>
+      )}
+      <SoundPrompt />
+    </>
+  );
 }

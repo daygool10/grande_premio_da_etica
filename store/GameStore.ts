@@ -10,6 +10,7 @@ export { DATABASE_SCHEMA_ERROR } from './gameTypes';
 export const useGameStore = create<GameStore>((set, get) => ({
   viewState: 'start',
   game: null,
+  streamFallback: false,
   players: [],
   currentPlayer: null,
   answers: [],

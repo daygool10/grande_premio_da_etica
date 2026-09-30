@@ -1,6 +1,7 @@
 import { database } from '../lib/database';
 import { questions, getQuestionAt } from '../data/questions';
 import { finishLineForOrder } from '../lib/raceScoring';
+import { FALLBACK_POLL_INTERVAL_MS, openGameEventStream } from '../lib/gameEvents';
 import { Game } from './gameTypes';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
@@ -131,13 +132,62 @@ export function createSyncActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
     const { game } = get();
     if (!game) return () => {};
 
-    // Polling keeps the game state synchronized across clients.
-    const interval = setInterval(() => {
-      get().loadGameState();
-    }, 2000);
+    let pollingTimer: number | null = null;
+    let refreshing = false;
+    let refreshAgain = false;
+
+    const stopFallbackPolling = () => {
+      if (pollingTimer !== null) {
+        window.clearInterval(pollingTimer);
+        pollingTimer = null;
+      }
+    };
+
+    const startFallbackPolling = () => {
+      if (pollingTimer === null) {
+        pollingTimer = window.setInterval(() => {
+          void get().loadGameState();
+        }, FALLBACK_POLL_INTERVAL_MS);
+      }
+    };
+
+    const refreshOnFrame = () => {
+      if (refreshing) {
+        refreshAgain = true;
+        return;
+      }
+      refreshing = true;
+      refreshAgain = false;
+      void get().loadGameState().finally(() => {
+        refreshing = false;
+        if (refreshAgain) {
+          refreshAgain = false;
+          refreshOnFrame();
+        }
+      });
+    };
+
+    const stream = openGameEventStream({
+      gameId: game.id,
+      onEvent: (frame) => {
+        if (frame.game_id !== game.id) return;
+        refreshOnFrame();
+      },
+      onStatusChange: (status) => {
+        if (status === 'fallback') {
+          set({ streamFallback: true });
+          startFallbackPolling();
+        } else {
+          set({ streamFallback: false });
+          stopFallbackPolling();
+        }
+      },
+    });
 
     return () => {
-      clearInterval(interval);
+      set({ streamFallback: false });
+      stopFallbackPolling();
+      stream.close();
     };
   },
 
