@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm install --production
 
 COPY index.js ./
+COPY events.js ./
 
 EXPOSE 3002
 

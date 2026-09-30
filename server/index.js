@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 
+import { registerEvents } from './events.js';
+
 const { Pool } = pg;
 
 const pool = new Pool({
@@ -325,7 +327,10 @@ app.post('/answers', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error creating answer:', error);
-    res.status(500).json({ error: error.message });
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Answer already submitted', code: '23505' });
+    }
+    res.status(500).json({ error: error.message, code: error.code });
   }
 });
 
@@ -432,6 +437,8 @@ app.get('/health', async (req, res) => {
 // ============================================
 
 const PORT = process.env.PORT || 3001;
+
+registerEvents(app);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

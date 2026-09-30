@@ -51,6 +51,10 @@ interface Answer {
   created_at?: string;
 }
 
+type CreateAnswerResult =
+  | { status: 'saved'; answer: Answer }
+  | { status: 'already_answered' };
+
 export const database = {
   async createGame(gameData: {
     game_code: string;
@@ -146,11 +150,18 @@ export const database = {
     question_index: number;
     selected_option: number;
     is_correct: boolean;
-  }): Promise<Answer> {
-    return apiFetch<Answer>('/answers', {
-      method: 'POST',
-      body: JSON.stringify(answerData),
-    });
+  }): Promise<CreateAnswerResult> {
+    try {
+      const answer = await apiFetch<Answer>('/answers', {
+        method: 'POST',
+        body: JSON.stringify(answerData),
+      });
+      return { status: 'saved', answer };
+    } catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (code === '23505') return { status: 'already_answered' };
+      throw error;
+    }
   },
 
   async getAnswersByGame(gameId: string): Promise<Answer[]> {

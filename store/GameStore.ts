@@ -384,13 +384,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
 
     try {
-      await database.createAnswer({
+      const result = await database.createAnswer({
         game_id: game.id,
         player_id: currentPlayer.id,
         question_index: game.current_question_index,
         selected_option: selectedOption,
         is_correct: option.isCorrect,
       });
+
+      if (result.status === 'already_answered') {
+        return;
+      }
 
       set({
         hasAnswered: true,
