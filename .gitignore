@@ -6,3 +6,4 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+public/yw_manifest.json
