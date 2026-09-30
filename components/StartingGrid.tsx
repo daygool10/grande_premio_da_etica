@@ -75,7 +75,7 @@ export function StartingGrid({ players }: StartingGridProps) {
               </span>
               {player ? (
                 <>
-                  <F1Car team={player.f1_team} className="h-10 w-16 shrink-0 sm:h-12 sm:w-20" />
+                  <F1Car team={player.f1_team} className="h-10 w-16 shrink-0 sm:h-12 sm:w-20" imageScale={1.6} />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-white sm:text-base">{player.team_name}</span>
                     <span className="block truncate text-xs text-gray-300 sm:text-sm">{player.f1_team}</span>

@@ -1,4 +1,4 @@
-import { TeamPin } from './TeamPin';
+import { F1Car } from './F1Car';
 
 interface CircuitBoardPlayer {
   id: string;
@@ -12,18 +12,64 @@ interface CircuitBoardProps {
   boardSize: number;
 }
 
-const TRACK_PATH = [
+interface TrackPoint {
+  x: number;
+  y: number;
+}
+
+function sampleCurve(start: TrackPoint, control1: TrackPoint, control2: TrackPoint, end: TrackPoint) {
+  const steps = 24;
+
+  return Array.from({ length: steps }, (_, index) => {
+    const progress = (index + 1) / steps;
+    const inverseProgress = 1 - progress;
+
+    return {
+      x:
+        inverseProgress ** 3 * start.x +
+        3 * inverseProgress ** 2 * progress * control1.x +
+        3 * inverseProgress * progress ** 2 * control2.x +
+        progress ** 3 * end.x,
+      y:
+        inverseProgress ** 3 * start.y +
+        3 * inverseProgress ** 2 * progress * control1.y +
+        3 * inverseProgress * progress ** 2 * control2.y +
+        progress ** 3 * end.y,
+    };
+  });
+}
+
+const TRACK_PATH: TrackPoint[] = [
   { x: 120, y: 100 },
   { x: 920, y: 100 },
-  { x: 990, y: 165 },
+  ...sampleCurve(
+    { x: 920, y: 100 },
+    { x: 970, y: 100 },
+    { x: 990, y: 125 },
+    { x: 990, y: 165 },
+  ),
   { x: 990, y: 185 },
-  { x: 920, y: 250 },
+  ...sampleCurve(
+    { x: 990, y: 185 },
+    { x: 990, y: 230 },
+    { x: 970, y: 250 },
+    { x: 920, y: 250 },
+  ),
   { x: 180, y: 250 },
-  { x: 110, y: 315 },
+  ...sampleCurve(
+    { x: 180, y: 250 },
+    { x: 130, y: 250 },
+    { x: 110, y: 275 },
+    { x: 110, y: 315 },
+  ),
   { x: 110, y: 325 },
-  { x: 180, y: 380 },
+  ...sampleCurve(
+    { x: 110, y: 325 },
+    { x: 110, y: 360 },
+    { x: 135, y: 380 },
+    { x: 180, y: 380 },
+  ),
   { x: 980, y: 380 },
-  { x: 1056, y: 380 },
 ];
 
 function getTrackPositions(boardSize: number) {
@@ -59,16 +105,27 @@ function getTrackPositions(boardSize: number) {
       position,
       left: `${(x / 1100) * 100}%`,
       top: `${(y / 440) * 100}%`,
+      rotation:
+        (Math.atan2(segmentEnd.y - segmentStart.y, segmentEnd.x - segmentStart.x) * 180) /
+          Math.PI +
+        270,
     };
   });
 }
 
 export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
   const positions = getTrackPositions(boardSize);
+  const playersAtPosition = new Map<number, CircuitBoardPlayer[]>();
+
+  for (const player of players) {
+    const group = playersAtPosition.get(player.position) ?? [];
+    group.push(player);
+    playersAtPosition.set(player.position, group);
+  }
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
-      <div className="relative isolate h-[380px] min-w-[720px] overflow-hidden bg-[#10251f] sm:h-[440px]">
+      <div className="relative isolate aspect-[5/2] min-w-[720px] overflow-hidden bg-[#10251f]">
         <svg
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"
@@ -114,56 +171,41 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           </text>
         </svg>
 
-        <div
-          className="absolute left-[11%] top-[22%] z-20 grid grid-cols-3 gap-0"
-          aria-label="Carros alinhados atrás da linha de largada"
-        >
-          {players
-            .filter((player) => player.position === 0)
-            .map((player) => (
-              <span
-                key={player.id}
-                className="flex h-6 w-6 items-center justify-center"
-                title={`${player.team_name} — ${player.f1_team}`}
-              >
-                <TeamPin team={player.f1_team} className="h-5 w-5 text-[7px]" />
-                <span className="sr-only">{player.team_name} — {player.f1_team}</span>
-              </span>
-            ))}
-        </div>
-
-        {positions.filter(({ position }) => position !== 0).map(({ position, left, top }) => {
-          const teamsAtPosition = players.filter((player) => player.position === position);
+        {players.map((player) => {
+          const position = Math.max(0, Math.min(boardSize, player.position));
+          const trackPosition = positions[position];
+          const group = playersAtPosition.get(player.position) ?? [player];
+          const slot = group.findIndex((groupPlayer) => groupPlayer.id === player.id);
+          const isStartingGrid = position === 0;
+          const columns = isStartingGrid ? 4 : 2;
+          const row = Math.floor(slot / columns);
+          const rowCount = Math.ceil(group.length / columns);
+          const carsInRow = Math.min(columns, group.length - row * columns);
+          const sideOffset =
+            isStartingGrid
+              ? ((slot % columns) - (carsInRow - 1) / 2)
+              : slot % 2 === 0
+                ? -0.375
+                : 0.375;
+          const rowOffset = isStartingGrid ? row - (rowCount - 1) / 2 : -row * 1.1;
 
           return (
             <div
-              key={position}
-              className="absolute z-30 flex w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-              style={{ left, top }}
-              title={
-                teamsAtPosition.length > 0
-                  ? teamsAtPosition.map((player) => `${player.team_name} (${player.f1_team})`).join(', ')
-                  : `Casa ${position}`
-              }
+              key={player.id}
+              className="absolute z-30 flex text-[48px] transition-all duration-1000 ease-in-out motion-reduce:transition-none sm:text-[60px] xl:text-[76px]"
+              style={{
+                left: trackPosition.left,
+                top: trackPosition.top,
+                fontSize: isStartingGrid ? 'clamp(14px, 1.75vw, 32px)' : undefined,
+                transform: `translate(-50%, -50%) rotate(${trackPosition.rotation}deg) translate(${sideOffset}em, ${rowOffset}em)`,
+              }}
+              title={`${player.team_name} — ${player.f1_team}, casa ${position}`}
+              aria-label={`${player.team_name}, ${player.f1_team}, casa ${position}`}
             >
-              {teamsAtPosition.length > 0 && (
-                <div className="grid w-full grid-cols-3 justify-items-center gap-0">
-                  {teamsAtPosition.map((player) => (
-                    <span
-                      key={player.id}
-                      className="flex h-6 w-6 items-center justify-center"
-                      title={`${player.team_name} — ${player.f1_team}`}
-                    >
-                      <TeamPin team={player.f1_team} className="h-5 w-5 text-[7px]" />
-                      <span className="sr-only">{player.team_name} — {player.f1_team}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <F1Car team={player.f1_team} className="h-[1em] w-[1em]" rotation={0} />
             </div>
           );
         })}
-
       </div>
     </div>
   );

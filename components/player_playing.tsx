@@ -30,21 +30,8 @@ function PlayerPitStop({ teamName, f1Team, launching = false, resultMessage }: P
             ? `${teamName}, próxima parada: a nova pergunta!`
             : `${teamName}, a equipe está trocando os pneus.`}
         </p>
-        <div className={`relative mt-10 w-full max-w-[340px] ${launching ? 'pit-stop-launch' : 'pit-stop-car'}`}>
-          <div className="absolute left-[8%] top-1/2 h-1 w-[84%] -translate-y-1/2 bg-white/10" />
-          <F1Car team={f1Team} className="relative z-10 h-auto w-full drop-shadow-2xl" />
-          <div className="pit-stop-tire pit-stop-tire-front-left" aria-hidden="true">
-            <PitStopTire />
-          </div>
-          <div className="pit-stop-tire pit-stop-tire-front-right" aria-hidden="true">
-            <PitStopTire />
-          </div>
-          <div className="pit-stop-tire pit-stop-tire-rear-left" aria-hidden="true">
-            <PitStopTire />
-          </div>
-          <div className="pit-stop-tire pit-stop-tire-rear-right" aria-hidden="true">
-            <PitStopTire />
-          </div>
+        <div className={`relative mt-10 aspect-square w-full max-w-[min(76vw,340px)] ${launching ? 'pit-stop-launch' : 'pit-stop-car'}`}>
+          <F1Car team={f1Team} className="h-full w-full drop-shadow-2xl" />
         </div>
         <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-red-300">
           {launching ? 'Acelerando...' : 'Trocando para pneus novos'}
@@ -59,17 +46,6 @@ function PlayerPitStop({ teamName, f1Team, launching = false, resultMessage }: P
         )}
       </section>
     </main>
-  );
-}
-
-function PitStopTire() {
-  return (
-    <svg viewBox="0 0 40 40" className="h-full w-full" aria-hidden="true">
-      <circle cx="20" cy="20" r="18" fill="#111318" stroke="#ef3340" strokeWidth="2.5" />
-      <circle cx="20" cy="20" r="11" fill="#303640" stroke="#d1d5db" strokeWidth="2" />
-      <circle cx="20" cy="20" r="4" fill="#111318" />
-      <path d="M20 9v7m0 8v7m-11-11h7m8 0h7M12 12l5 5m6 6 5 5m0-16-5 5m-6 6-5 5" stroke="#aeb5c0" strokeWidth="1.5" />
-    </svg>
   );
 }
 
