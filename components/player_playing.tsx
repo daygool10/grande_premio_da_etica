@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, questions, TEAM_COLORS } from '../data/questions';
+import { getBoardSize, getQuestionAt, questions, TEAM_COLORS } from '../data/questions';
+import {
+  getEngineerMessage,
+  hasLostTurnPenalty,
+  hasSkipAnswerForQuestion,
+} from '../lib/engineerMessages';
 import { TeamLogo } from './TeamLogo';
 import { F1Car } from './F1Car';
 
@@ -31,7 +38,7 @@ function PlayerPitStop({ teamName, f1Team, launching = false, resultMessage }: P
             : `${teamName}, a equipe está trocando os pneus.`}
         </p>
         <div className={`relative mt-10 aspect-square w-full max-w-[min(76vw,340px)] ${launching ? 'pit-stop-launch' : 'pit-stop-car'}`}>
-          <F1Car team={f1Team} className="h-full w-full drop-shadow-2xl" />
+          <F1Car team={f1Team} className="h-full w-full drop-shadow-2xl" rotation={270} />
         </div>
         <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-red-300">
           {launching ? 'Acelerando...' : 'Trocando para pneus novos'}
@@ -58,6 +65,9 @@ export function PlayerPlaying() {
   const [displayQuestionIndex, setDisplayQuestionIndex] = useState(
     () => game?.current_question_index ?? 0,
   );
+  const [engineerMessage, setEngineerMessage] = useState('');
+  const lastEngineerMessage = useRef('');
+  const announcedQuestion = useRef('');
 
   useEffect(() => {
     loadGameState();
@@ -117,6 +127,68 @@ export function PlayerPlaying() {
 
   const q = currentQuestion;
   const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const isQuestionAdvancing = Boolean(
+    game && game.current_question_index > displayQuestionIndex,
+  );
+  const hasLostTurn = Boolean(
+    currentPlayer?.skipped_turn ||
+    (isQuestionAdvancing && currentPlayer && hasLostTurnPenalty(
+      answers,
+      currentPlayer.id,
+      displayQuestionIndex,
+      game?.question_order,
+    )),
+  );
+  const isApplyingSkipPenalty = Boolean(
+    isQuestionAdvancing &&
+    currentPlayer &&
+    hasSkipAnswerForQuestion(
+      answers,
+      currentPlayer.id,
+      displayQuestionIndex,
+      game?.question_order,
+    ),
+  );
+
+  useEffect(() => {
+    if (!game || !currentPlayer || !isQuestionAdvancing) return;
+
+    const announcementKey = `${game.id}:${game.current_question_index}:${currentPlayer.id}`;
+    if (announcedQuestion.current === announcementKey) return;
+    announcedQuestion.current = announcementKey;
+
+    if (hasLostTurn) {
+      setEngineerMessage('');
+      return;
+    }
+
+    const { text } = getEngineerMessage({
+      player: currentPlayer,
+      players,
+      answers,
+      questionIndex: displayQuestionIndex,
+      questionOrder: game.question_order,
+      boardSize,
+      previousMessage: lastEngineerMessage.current,
+    });
+    lastEngineerMessage.current = text;
+    setEngineerMessage(text);
+  }, [
+    answers,
+    boardSize,
+    currentPlayer,
+    displayQuestionIndex,
+    game,
+    hasLostTurn,
+    isQuestionAdvancing,
+    players,
+  ]);
+
+  useEffect(() => {
+    if (!engineerMessage) return;
+    const timer = window.setTimeout(() => setEngineerMessage(''), 6000);
+    return () => window.clearTimeout(timer);
+  }, [engineerMessage]);
 
   if (!q || !currentPlayer) {
     return (
@@ -138,12 +210,12 @@ export function PlayerPlaying() {
       : `❌ Errou! ${selectedAnswer.penalty || 'Não avance nesta rodada.'}`
     : '';
 
-  if (game && game.current_question_index > displayQuestionIndex) {
+  if (isQuestionAdvancing && hasLostTurn) {
     return (
       <PlayerPitStop
         teamName={currentPlayer.team_name}
         f1Team={currentPlayer.f1_team}
-        launching
+        launching={!currentPlayer.skipped_turn && !isApplyingSkipPenalty}
       />
     );
   }
@@ -166,6 +238,32 @@ export function PlayerPlaying() {
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
       />
       <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+      <AnimatePresence>
+        {engineerMessage && (
+          <motion.aside
+            key={engineerMessage}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            role="status"
+            aria-live="polite"
+            className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-2xl items-center gap-4 rounded-xl border border-cyan-300/40 border-l-4 border-l-cyan-300 bg-[#101b27]/95 px-5 py-4 text-left shadow-2xl backdrop-blur-md sm:px-6"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-cyan-200">
+              <Radio className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
+                Rádio da equipe · {currentPlayer.team_name}
+              </span>
+              <span className="mt-1 block text-base font-semibold leading-snug text-white sm:text-lg">
+                {engineerMessage}
+              </span>
+            </span>
+          </motion.aside>
+        )}
+      </AnimatePresence>
       <div className="relative z-10 mx-auto w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

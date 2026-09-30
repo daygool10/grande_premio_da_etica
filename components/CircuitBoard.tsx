@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from 'react';
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'framer-motion';
 import { F1Car } from './F1Car';
 
 interface CircuitBoardPlayer {
@@ -11,6 +13,14 @@ interface CircuitBoardProps {
   players: CircuitBoardPlayer[];
   boardSize: number;
 }
+
+interface TrackPosition {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
+const TRACK_ANIMATION_STEPS = 32;
 
 interface TrackPoint {
   x: number;
@@ -40,7 +50,7 @@ function sampleCurve(start: TrackPoint, control1: TrackPoint, control2: TrackPoi
 }
 
 const TRACK_PATH: TrackPoint[] = [
-  { x: 120, y: 100 },
+  { x: 100, y: 100 },
   { x: 920, y: 100 },
   ...sampleCurve(
     { x: 920, y: 100 },
@@ -72,7 +82,7 @@ const TRACK_PATH: TrackPoint[] = [
   { x: 980, y: 380 },
 ];
 
-function getTrackPositions(boardSize: number) {
+function getTrackPositions(boardSize: number): TrackPosition[] {
   const segmentLengths = TRACK_PATH.slice(1).map((point, index) => {
     const previous = TRACK_PATH[index];
     return Math.hypot(point.x - previous.x, point.y - previous.y);
@@ -100,11 +110,12 @@ function getTrackPositions(boardSize: number) {
       (distance - cumulativeLengths[segmentIndex]) / segmentLengths[segmentIndex];
     const x = segmentStart.x + (segmentEnd.x - segmentStart.x) * segmentProgress;
     const y = segmentStart.y + (segmentEnd.y - segmentStart.y) * segmentProgress;
+    const xPercent = (x / 1100) * 100;
+    const yPercent = (y / 440) * 100;
 
     return {
-      position,
-      left: `${(x / 1100) * 100}%`,
-      top: `${(y / 440) * 100}%`,
+      x: xPercent,
+      y: yPercent,
       rotation:
         (Math.atan2(segmentEnd.y - segmentStart.y, segmentEnd.x - segmentStart.x) * 180) /
           Math.PI +
@@ -113,8 +124,106 @@ function getTrackPositions(boardSize: number) {
   });
 }
 
+function interpolateTrackPosition(track: TrackPosition[], progress: number) {
+  const sample = Math.max(0, Math.min(track.length - 1, progress * TRACK_ANIMATION_STEPS));
+  const start = track[Math.floor(sample)];
+  const end = track[Math.min(track.length - 1, Math.ceil(sample))];
+  const amount = sample - Math.floor(sample);
+
+  return {
+    x: start.x + (end.x - start.x) * amount,
+    y: start.y + (end.y - start.y) * amount,
+    rotation: start.rotation + (end.rotation - start.rotation) * amount,
+  };
+}
+
+interface TrackCarProps {
+  player: CircuitBoardPlayer;
+  position: number;
+  track: TrackPosition[];
+  laneOffset: number;
+  sideOffset: number;
+  rowOffset: number;
+  isStartingGrid: boolean;
+}
+
+function TrackCar({
+  player,
+  position,
+  track,
+  laneOffset,
+  sideOffset,
+  rowOffset,
+  isStartingGrid,
+}: TrackCarProps) {
+  const progress = useMotionValue(position);
+  const lanePosition = useMotionValue(isStartingGrid ? 0 : laneOffset);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    const distance = Math.abs(position - progress.get());
+    if (distance === 0) return;
+
+    const animation = animate(progress, position, {
+      duration: reduceMotion ? 0 : Math.max(0.8, distance * 0.42),
+      ease: 'linear',
+    });
+    return () => animation.stop();
+  }, [position, progress, reduceMotion]);
+
+  useEffect(() => {
+    const animation = animate(lanePosition, isStartingGrid ? 0 : laneOffset, {
+      duration: reduceMotion ? 0 : 0.5,
+      ease: 'easeInOut',
+    });
+    return () => animation.stop();
+  }, [isStartingGrid, laneOffset, lanePosition, reduceMotion]);
+
+  const left = useTransform(() => {
+    const point = interpolateTrackPosition(track, progress.get());
+    const tangent = ((point.rotation - 270) * Math.PI) / 180;
+    const normalX = -Math.sin(tangent);
+    const offset = (normalX * lanePosition.get() * 100) / 1100;
+    return `calc(${point.x}% + ${offset}%)`;
+  });
+  const top = useTransform(() => {
+    const point = interpolateTrackPosition(track, progress.get());
+    const tangent = ((point.rotation - 270) * Math.PI) / 180;
+    const normalY = Math.cos(tangent);
+    const offset = (normalY * lanePosition.get() * 100) / 440;
+    return `calc(${point.y}% + ${offset}%)`;
+  });
+  const rotation = useTransform(progress, (value) => interpolateTrackPosition(track, value).rotation);
+
+  return (
+    <motion.div
+      className="absolute z-30"
+      style={{ left, top }}
+      title={`${player.team_name} — ${player.f1_team}, casa ${position}`}
+      aria-label={`${player.team_name}, ${player.f1_team}, casa ${position}`}
+    >
+      <div className="-translate-x-1/2 -translate-y-1/2">
+        <motion.div style={{ rotate: rotation }}>
+          <div
+            className="flex text-[48px] sm:text-[60px] xl:text-[76px]"
+            style={{
+              transform: `translate(${sideOffset}em, ${rowOffset}em)`,
+              transition: reduceMotion ? 'none' : 'transform 500ms ease-in-out',
+            }}
+          >
+            <F1Car team={player.f1_team} className="h-[1em] w-[1em]" rotation={0} />
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
-  const positions = getTrackPositions(boardSize);
+  const animationTrack = useMemo(
+    () => getTrackPositions(boardSize * TRACK_ANIMATION_STEPS),
+    [boardSize],
+  );
   const playersAtPosition = new Map<number, CircuitBoardPlayer[]>();
 
   for (const player of players) {
@@ -140,7 +249,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           </defs>
           <rect width="1100" height="440" fill="#15352b" />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            d="M0 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H1100"
             fill="none"
             stroke="#d1d5db"
             strokeWidth="78"
@@ -148,7 +257,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            d="M0 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H1100"
             fill="none"
             stroke="#343b46"
             strokeWidth="68"
@@ -156,7 +265,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
             strokeLinejoin="round"
           />
           <path
-            d="M120 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H980"
+            d="M0 100H920C970 100 990 125 990 165V185C990 230 970 250 920 250H180C130 250 110 275 110 315V325C110 360 135 380 180 380H1100"
             fill="none"
             stroke="#9ca3af"
             strokeWidth="2"
@@ -173,7 +282,6 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
 
         {players.map((player) => {
           const position = Math.max(0, Math.min(boardSize, player.position));
-          const trackPosition = positions[position];
           const group = playersAtPosition.get(player.position) ?? [player];
           const slot = group.findIndex((groupPlayer) => groupPlayer.id === player.id);
           const isStartingGrid = position === 0;
@@ -183,27 +291,23 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
           const carsInRow = Math.min(columns, group.length - row * columns);
           const sideOffset =
             isStartingGrid
-              ? ((slot % columns) - (carsInRow - 1) / 2)
-              : slot % 2 === 0
-                ? -0.375
-                : 0.375;
-          const rowOffset = isStartingGrid ? row - (rowCount - 1) / 2 : -row * 1.1;
+              ? ((slot % columns) - (carsInRow - 1) / 2) * 0.2
+              : 0;
+          const rowOffset = isStartingGrid
+            ? (row - (rowCount - 1) / 2) * 0.52
+            : -row * 1.1;
 
           return (
-            <div
+            <TrackCar
               key={player.id}
-              className="absolute z-30 flex text-[48px] transition-all duration-1000 ease-in-out motion-reduce:transition-none sm:text-[60px] xl:text-[76px]"
-              style={{
-                left: trackPosition.left,
-                top: trackPosition.top,
-                fontSize: isStartingGrid ? 'clamp(14px, 1.75vw, 32px)' : undefined,
-                transform: `translate(-50%, -50%) rotate(${trackPosition.rotation}deg) translate(${sideOffset}em, ${rowOffset}em)`,
-              }}
-              title={`${player.team_name} — ${player.f1_team}, casa ${position}`}
-              aria-label={`${player.team_name}, ${player.f1_team}, casa ${position}`}
-            >
-              <F1Car team={player.f1_team} className="h-[1em] w-[1em]" rotation={0} />
-            </div>
+              player={player}
+              position={position}
+              track={animationTrack}
+              laneOffset={isStartingGrid || carsInRow === 1 ? 0 : slot % 2 === 0 ? -17 : 17}
+              sideOffset={sideOffset}
+              rowOffset={rowOffset}
+              isStartingGrid={isStartingGrid}
+            />
           );
         })}
       </div>
