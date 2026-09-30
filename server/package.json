@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "cleanup": "node --experimental-strip-types cleanup-games.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

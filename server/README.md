@@ -75,3 +75,35 @@ A tabela `schema_migrations` registra cada arquivo aplicado (`name`, `applied_at
 A migração não roda automaticamente no boot da API — esse é um efeito colateral surpresa. Execute-a manualmente com `npm run migrate`.
 
 O mecanismo usa as mesmas configurações de conexão do `index.js`: `DATABASE_URL` ou `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PGSSLMODE`.
+
+## Limpeza de partidas abandonadas (retenção)
+
+Os games abandonados crescem sem limite na tabela `games`. A política de retenção vive em `../lib/retention.ts` (a mesma fonte usada pelos testes em `../lib/retention.test.ts`); o runner `cleanup-games.mjs` **usa as funções desse módulo e não duplica os limiares**, carregando o TypeScript com o type stripping nativo do Node 22 (`node --experimental-strip-types`).
+
+Dois motivos independentes selecionam um game para apagar:
+
+1. **Stale**: `updated_at` mais antigo que **14 dias**, exceto se o game estiver entre os **25 mais recentes**.
+2. **Empty lobby**: game com **zero players** e mais antigo que **24 horas**, mesmo dentro dos 25 mais recentes.
+
+A coluna `games.updated_at` é criada pela migração `0003_games_updated_at.sql` (o `init.sql` só tinha `created_at`); a mesma migração instala o trigger `games_stamp_updated_at`, que carimba `updated_at = now()` em todo `UPDATE` de `games` — inclusive num `UPDATE` que não muda nenhum valor, pois "tocado é tocado". O runner lê a coluna direto da tabela; sem ela o script recusa rodar. Um `updated_at` que não pode ser interpretado nunca é apagado.
+
+### Dry run (padrão)
+
+Sem `--apply`, o runner imprime o plano do que seria apagado, com motivos, e não apaga nada. `DATABASE_URL` é obrigatória — sem ela o script recusa rodar e sai com erro, sem apagar nada.
+
+```bash
+cd server
+DATABASE_URL=postgresql://daya:1234@localhost:5433/etica_f1 npm run cleanup
+```
+
+Ou direto: `node --experimental-strip-types cleanup-games.mjs`.
+
+### Aplicar (destrutivo e irreversível)
+
+```bash
+DATABASE_URL=postgresql://daya:1234@localhost:5433/etica_f1 npm run cleanup -- --apply
+```
+
+`--apply` primeiro imprime o que vai remover e só então executa os `DELETE`s numa transação única. Se a conexão ou qualquer consulta falhar, nada é apagado e a saída é não-zero.
+
+> **Atenção**: aplicar é **destrutivo e irreversível**. O schema declara `ON DELETE CASCADE` de `players` e `answers` (e das tabelas privadas de sessão) para `games`, então apagar um game remove os filhos automaticamente. Rode o dry run primeiro e confirme o plano antes de aplicar.
