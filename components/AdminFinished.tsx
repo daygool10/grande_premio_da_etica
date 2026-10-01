@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { TEAM_COLORS } from '../lib/teams';
 import { sortFinishers } from '../lib/finishOrder';
-import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
+import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 import { F1Semaphore } from './F1Semaphore';
 import { questions } from '../data/questions';
 import { PodiumArrival } from './PodiumArrival';

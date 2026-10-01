@@ -13,7 +13,7 @@ import {
   type ScorableOption,
   type ScorableQuestion,
   type TimedAnswer,
-} from './scoring';
+} from '../server/shared/scoring.js';
 
 const answer = (
   player_id: string,

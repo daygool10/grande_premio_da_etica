@@ -7,6 +7,7 @@ RUN npm install --production
 
 COPY index.js ./
 COPY events.js ./
+COPY shared/ ./shared/
 
 EXPOSE 3002
 

@@ -1,20 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   accumulateSpeedRanks,
-  rankCorrectAnswersForQuestion,
-  rankPlayers,
-  type PenaltyType,
-  type ScorableOption,
-} from './scoring';
-import {
   dealtQuestions,
   finishLineForOrder,
   raceFinishLine,
+  rankCorrectAnswersForQuestion,
+  rankPlayers,
   scoreReveal,
   type IdentifiableQuestion,
+  type PenaltyType,
   type ScorableAnswer,
+  type ScorableOption,
   type ScorablePlayer,
-} from './raceScoring';
+} from '../server/shared/scoring.js';
 
 const option = (isCorrect: boolean, advance: number, penaltyType: PenaltyType): ScorableOption => ({
   isCorrect,

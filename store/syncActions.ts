@@ -1,6 +1,6 @@
 import { database } from '../lib/database';
 import { questions, getQuestionAt } from '../data/questions';
-import { finishLineForOrder } from '../lib/raceScoring';
+import { finishLineForOrder } from '../server/shared/scoring.js';
 import { FALLBACK_POLL_INTERVAL_MS, openGameEventStream } from '../lib/gameEvents';
 import { Game } from './gameTypes';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';

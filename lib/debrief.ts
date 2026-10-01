@@ -1,4 +1,4 @@
-import { applyScore, rankCorrectAnswersForQuestion, scoreForQuestion, type ScorableOption, type TimedAnswer } from './scoring';
+import { applyScore, rankCorrectAnswersForQuestion, scoreForQuestion, type ScorableOption, type TimedAnswer } from '../server/shared/scoring.js';
 
 export interface AnswerLike extends TimedAnswer {
   selected_option: number;

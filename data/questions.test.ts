@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createQuestionOrder, questions } from './questions';
-import { finishLineForOrder } from '../lib/raceScoring';
+import { finishLineForOrder } from '../server/shared/scoring.js';
 
 describe('createQuestionOrder deals the whole question set', () => {
   it('returns every question id exactly once, in a shuffled order', () => {

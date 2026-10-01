@@ -10,7 +10,7 @@ import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 import { AdminDebrief } from './AdminDebrief';
 import { sortFinishers } from '../lib/finishOrder';
-import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
+import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 
 // Her games shuffle the question set into game.question_order; the debrief
 // replay must walk question ids in the order the game actually asked them.

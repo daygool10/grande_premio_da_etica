@@ -3,7 +3,7 @@ import { useGameStore } from '../store/GameStore';
 import { questions } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
 import { sortFinishers } from '../lib/finishOrder';
-import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
+import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 import { PodiumArrival } from './PodiumArrival';
 import { playCue } from '../lib/sound';
 

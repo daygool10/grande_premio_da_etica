@@ -1,5 +1,5 @@
 import { scoresBeforeQuestion } from '../lib/debrief';
-import { rankCorrectAnswersForQuestion, scoreForQuestion, applyScore } from '../lib/scoring';
+import { rankCorrectAnswersForQuestion, scoreForQuestion, applyScore } from '../server/shared/scoring.js';
 import type { Question } from '../data/questions';
 
 // Her platform has no database.types module; these mirror the rows her Express

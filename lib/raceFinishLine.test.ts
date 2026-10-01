@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { questions } from '../data/questions';
-import { finishLineForOrder, hasReachedFinishLine } from './raceScoring';
+import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 
 // The real 20-question dealt subset from a reproduced game. A perfect run over
 // it scores exactly 113: 53 from the largest correct advance of each dealt

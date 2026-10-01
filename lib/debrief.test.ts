@@ -7,7 +7,7 @@ import {
   type PlayerLike,
   type ScorableQuestion,
 } from './debrief';
-import type { PenaltyType, ScorableOption } from './scoring';
+import type { PenaltyType, ScorableOption } from '../server/shared/scoring.js';
 
 const option = (isCorrect: boolean, advance: number, penaltyType: PenaltyType): ScorableOption => ({ isCorrect, advance, penaltyType });
 const correctAdvance = (advance: number): ScorableOption => option(true, advance, null);

@@ -3,7 +3,7 @@ import { useGameStore } from '../store/GameStore';
 import { questions, type Question } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
 import { questionDeltas, overtakeReport } from '../lib/debrief';
-import { finishLineForOrder, hasReachedFinishLine } from '../lib/raceScoring';
+import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 import { playCue } from '../lib/sound';
 import { TeamLogo } from './TeamLogo';
 import { PlayerQuestion } from './PlayerQuestion';

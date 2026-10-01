@@ -1,6 +1,6 @@
 import { database } from '../lib/database';
 import { questions, getQuestionAt } from '../data/questions';
-import { finishLineForOrder, scoreReveal } from '../lib/raceScoring';
+import { finishLineForOrder, scoreReveal } from '../server/shared/scoring.js';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
 export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'revealAnswer' | 'nextQuestion'> {
