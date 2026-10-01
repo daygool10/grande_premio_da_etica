@@ -3,6 +3,7 @@ import cors from 'cors';
 import pg from 'pg';
 
 import { registerEvents } from './events.js';
+import { registerQuestions, dealQuestionOrder } from './questions.js';
 
 const { Pool } = pg;
 
@@ -43,7 +44,19 @@ function sanitizePlayer(player) {
 // Criar partida
 app.post('/games', async (req, res) => {
   try {
-    const { game_code, admin_id, admin_session_token, phase, current_question_index, question_order, question_revealed } = req.body;
+    const { game_code, admin_id, admin_session_token, phase, current_question_index, question_revealed, question_count } = req.body;
+
+    // O servidor agora sorteia a ordem das perguntas;
+    // qualquer question_order enviado pelo cliente é ignorado.
+    if (question_count !== undefined && question_count !== null) {
+      const countResult = await pool.query('SELECT count(*)::int AS total FROM public.questions');
+      const totalQuestions = countResult.rows[0].total;
+      if (!Number.isInteger(question_count) || question_count < 1 || question_count > totalQuestions) {
+        return res.status(400).json({ error: 'Invalid question_count' });
+      }
+    }
+
+    const question_order = await dealQuestionOrder(pool, question_count);
 
     const result = await pool.query(
       `INSERT INTO games (game_code, admin_id, admin_session_token, phase, current_question_index, question_order, question_revealed)
@@ -55,6 +68,9 @@ app.post('/games', async (req, res) => {
     res.json(sanitizeGame(result.rows[0]));
   } catch (error) {
     console.error('Error creating game:', error);
+    if (error.code === '42P01') {
+      return res.status(503).json({ error: 'Questions table missing: apply migrations 0004 and 0005 before using this route' });
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -315,7 +331,36 @@ app.post('/players/batch-update', async (req, res) => {
 // Criar resposta
 app.post('/answers', async (req, res) => {
   try {
-    const { game_id, player_id, question_index, selected_option, is_correct } = req.body;
+    const { game_id, player_id, question_index, selected_option } = req.body;
+
+    // A nota sai do gabarito no banco; qualquer is_correct
+    // enviado pelo cliente é ignorado. A pergunta vigente é
+    // a do question_order na posição current_question_index.
+    const gameResult = await pool.query(
+      'SELECT question_order, current_question_index FROM games WHERE id = $1',
+      [game_id]
+    );
+
+    if (gameResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    const game = gameResult.rows[0];
+    const questionOrder = game.question_order;
+    const questionId = Array.isArray(questionOrder)
+      ? questionOrder[game.current_question_index] ?? -1
+      : -1;
+
+    const optionResult = await pool.query(
+      'SELECT is_correct FROM question_options WHERE question_id = $1 AND option_index = $2',
+      [questionId, selected_option]
+    );
+
+    if (optionResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid answer option' });
+    }
+
+    const is_correct = optionResult.rows[0].is_correct;
 
     const result = await pool.query(
       `INSERT INTO answers (game_id, player_id, question_index, selected_option, is_correct)
@@ -439,6 +484,7 @@ app.get('/health', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 
 registerEvents(app);
+registerQuestions(app, pool);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
