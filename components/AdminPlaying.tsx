@@ -35,9 +35,7 @@ export function AdminPlaying() {
   const questionCount = game?.question_order?.length ?? questions.length;
   const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
 
-  const eligiblePlayers = players.filter(
-    (player) => !player.skipped_turn && player.position < boardSize,
-  );
+  const eligiblePlayers = players.filter((player) => player.position < boardSize);
   const answeredCount = eligiblePlayers.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
@@ -205,11 +203,9 @@ export function AdminPlaying() {
                         }`}>
                           {p.position >= boardSize
                             ? 'Finalizou'
-                            : p.skipped_turn
-                              ? 'Punição'
-                              : hasAnswered
-                                ? 'Respondeu'
-                                : 'Aguardando'}
+                            : hasAnswered
+                              ? 'Respondeu'
+                              : 'Aguardando'}
                         </span>
                       </div>
                     </div>

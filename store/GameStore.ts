@@ -13,7 +13,6 @@ interface Player {
   team_name: string;
   f1_team: string;
   position: number;
-  skipped_turn: boolean;
   is_connected: boolean;
   last_seen: string;
 }
@@ -35,10 +34,11 @@ interface Answer {
   question_index: number;
   selected_option: number;
   is_correct: boolean;
+  response_time_ms: number | null;
   created_at?: string;
 }
 
-type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
+type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished';
 type SetupPlayerResult =
   | 'success'
   | 'team_taken'
@@ -77,19 +77,18 @@ interface GameStore {
   currentQuestion: typeof questions[0] | null;
   showResult: boolean;
   resultMessage: string;
-  isPenalty: boolean;
-  penaltyMessage: string;
   finishedPlayers: Player[];
   recoveryCandidate: PlayerSession | null;
   isCheckingRecovery: boolean;
   recoveryError: string;
   
   setViewState: (state: ViewState) => void;
+  returnToHome: () => void;
   createGame: () => Promise<void>;
   joinGame: (gameCode: string) => Promise<boolean>;
   setupPlayer: (teamName: string, f1Team: string) => Promise<SetupPlayerResult>;
   selectOption: (optionIndex: number) => void;
-  submitAnswer: () => Promise<void>;
+  submitAnswer: (responseTimeMs: number) => Promise<void>;
   revealAnswer: () => Promise<void>;
   nextQuestion: () => Promise<void>;
   startGame: () => Promise<void>;
@@ -124,6 +123,28 @@ function isSameGameSnapshot(current: Game | null, snapshot: Game): boolean {
     current.question_revealed === snapshot.question_revealed;
 }
 
+function getAnswerSortTime(answer: Answer) {
+  if (answer.response_time_ms !== null && Number.isFinite(answer.response_time_ms)) {
+    return answer.response_time_ms;
+  }
+
+  if (!answer.created_at) return Number.POSITIVE_INFINITY;
+  const timestamp = Date.parse(answer.created_at);
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
+}
+
+function compareAnswerSpeed(first: Answer, second: Answer) {
+  const timeDifference = getAnswerSortTime(first) - getAnswerSortTime(second);
+  if (Number.isFinite(timeDifference) && timeDifference !== 0) return timeDifference;
+
+  const firstTimestamp = first.created_at ? Date.parse(first.created_at) : Number.POSITIVE_INFINITY;
+  const secondTimestamp = second.created_at ? Date.parse(second.created_at) : Number.POSITIVE_INFINITY;
+  if (firstTimestamp !== secondTimestamp) {
+    return firstTimestamp < secondTimestamp ? -1 : 1;
+  }
+  return first.player_id.localeCompare(second.player_id);
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   viewState: 'start',
   game: null,
@@ -135,8 +156,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currentQuestion: null,
   showResult: false,
   resultMessage: '',
-  isPenalty: false,
-  penaltyMessage: '',
   finishedPlayers: [],
   recoveryCandidate: null,
   isCheckingRecovery: false,
@@ -156,6 +175,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
     set({ viewState: state });
+  },
+
+  returnToHome: () => {
+    const { game } = get();
+    if (typeof window !== 'undefined') {
+      if (game) window.localStorage.removeItem(`${ADMIN_ID_PREFIX}${game.id}`);
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      window.localStorage.removeItem(PLAYER_SESSION_KEY);
+    }
+
+    set({
+      viewState: 'start',
+      game: null,
+      players: [],
+      currentPlayer: null,
+      answers: [],
+      selectedOption: null,
+      hasAnswered: false,
+      currentQuestion: null,
+      showResult: false,
+      resultMessage: '',
+      finishedPlayers: [],
+      recoveryCandidate: null,
+      isCheckingRecovery: false,
+      recoveryError: '',
+    });
   },
 
   createGame: async () => {
@@ -216,7 +261,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         team_name: teamName,
         f1_team: f1Team,
         position: 0,
-        skipped_turn: false,
         is_connected: true,
         last_seen: new Date().toISOString(),
         player_session_token: sessionToken,
@@ -427,7 +471,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ selectedOption: optionIndex });
   },
 
-  submitAnswer: async () => {
+  submitAnswer: async (responseTimeMs) => {
     const { game, currentPlayer, selectedOption, currentQuestion } = get();
     if (!game || !currentPlayer || selectedOption === null || !currentQuestion) return;
     const option = currentQuestion.options[selectedOption];
@@ -446,14 +490,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
         question_index: game.current_question_index,
         selected_option: selectedOption,
         is_correct: option.isCorrect,
+        response_time_ms: Math.max(0, Math.round(responseTimeMs)),
       });
 
       set({
         hasAnswered: true,
         showResult: false,
         resultMessage: '',
-        isPenalty: false,
-        penaltyMessage: '',
       });
     } catch (error) {
       console.error('Error submitting answer:', error);
@@ -481,54 +524,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const answersByPlayer = new Map(questionAnswers?.map((answer) => [answer.player_id, answer]));
-    const eligiblePlayers = gamePlayers.filter(
-      (player) => !player.skipped_turn && player.position < boardSize,
-    );
+    const eligiblePlayers = gamePlayers.filter((player) => player.position < boardSize);
     if (eligiblePlayers.some((player) => !answersByPlayer.has(player.id))) {
       throw new Error('Cannot reveal an answer until every player has submitted one.');
     }
 
+    const rankedCorrectAnswers = [...answersByPlayer.values()]
+      .filter((answer) => answer.is_correct)
+      .sort(compareAnswerSpeed);
+    const rankByPlayer = new Map(
+      rankedCorrectAnswers.map((answer, index) => [answer.player_id, index]),
+    );
     const cachedPlayersById = new Map(cachedPlayers.map((player) => [player.id, player]));
     const playerUpdates = gamePlayers.map((player) => {
-      if (player.skipped_turn || player.position >= boardSize) {
-        return {
-          id: player.id,
-          position: player.position,
-          skipped_turn: player.skipped_turn,
-        };
+      if (player.position >= boardSize) {
+        return { id: player.id, position: player.position };
       }
 
       const answer = answersByPlayer.get(player.id);
-      const option = answer ? question.options[answer.selected_option] : undefined;
-      if (!option) {
-        throw new Error(`Invalid answer option for player ${player.id}.`);
+      if (!answer) {
+        throw new Error(`Missing answer for eligible player ${player.id}.`);
       }
 
-      const cachedPlayer = cachedPlayersById.get(player.id);
-      const startingPosition = cachedPlayer?.position ?? player.position;
-      let position = startingPosition;
-      if (option.isCorrect) {
-        position = Math.min(startingPosition + option.advance, boardSize);
-      } else {
-        switch (option.penaltyType) {
-          case 'back1':
-            position = Math.max(0, startingPosition - 1);
-            break;
-          case 'back2':
-            position = Math.max(0, startingPosition - 2);
-            break;
-          case 'start':
-            position = 0;
-            break;
-        }
-      }
+      const rank = rankByPlayer.get(player.id);
+      const advancement = answer.is_correct
+        ? rank === undefined ? 1 : Math.max(1, 4 - rank)
+        : 0;
+      const startingPosition = cachedPlayersById.get(player.id)?.position ?? player.position;
 
       return {
         id: player.id,
-        position,
-        skipped_turn: option.penaltyType === 'skip'
-          ? true
-          : (cachedPlayer?.skipped_turn ?? player.skipped_turn),
+        position: Math.min(startingPosition + advancement, boardSize),
       };
     });
 
@@ -542,19 +568,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
 
-    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
     const nextIndex = game.current_question_index + 1;
-
-    const [playersToCheck, currentAnswers] = await Promise.all([
-      database.getPlayersByGame(game.id),
-      database.getAnswersByGameAndQuestion(game.id, game.current_question_index),
-    ]);
-
-    const skippedPlayers = playersToCheck?.filter(p => p.skipped_turn) ?? [];
-    const answeredPlayerIds = new Set(currentAnswers?.map((answer) => answer.player_id));
-    const playersToUnskip = skippedPlayers
-      .filter((player) => player.position < boardSize && !answeredPlayerIds.has(player.id))
-      .map((player) => player.id);
 
     const updatedGame = await database.updateGame(game.id, {
       current_question_index: nextIndex,
@@ -562,32 +576,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: nextIndex >= (game.question_order?.length ?? questions.length) ? 'finished' : 'question',
     });
 
-    if (playersToUnskip.length > 0) {
-      const unskipUpdates = playersToUnskip.map(id => ({
-        id,
-        position: playersToCheck.find(p => p.id === id)?.position ?? 0,
-        skipped_turn: false,
-      }));
-      await database.batchUpdatePlayers(unskipUpdates);
-    }
-
-    const currentPlayer = get().currentPlayer;
     set({
       game: updatedGame,
       showResult: false,
       hasAnswered: false,
       selectedOption: null,
       resultMessage: '',
-      isPenalty: false,
-      penaltyMessage: '',
-      answers: [],
-      players: get().players.map((player) => ({
-        ...player,
-        skipped_turn: playersToUnskip.includes(player.id) ? false : player.skipped_turn,
-      })),
-      ...(currentPlayer && playersToUnskip.includes(currentPlayer.id)
-        ? { currentPlayer: { ...currentPlayer, skipped_turn: false } }
-        : {}),
     });
   },
 
@@ -629,8 +623,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
             selectedOption: null,
             showResult: false,
             resultMessage: '',
-            isPenalty: false,
-            penaltyMessage: '',
           }
         : {}),
     });

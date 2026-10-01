@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS public.players (
   team_name text NOT NULL,
   f1_team text NOT NULL,
   position integer NOT NULL DEFAULT 0,
-  skipped_turn boolean NOT NULL DEFAULT false,
   is_connected boolean NOT NULL DEFAULT true,
   last_seen timestamptz NOT NULL DEFAULT now(),
   player_session_token text,
@@ -38,8 +37,12 @@ CREATE TABLE IF NOT EXISTS public.answers (
   question_index integer NOT NULL,
   selected_option integer NOT NULL,
   is_correct boolean NOT NULL,
+  response_time_ms integer,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.answers ADD COLUMN IF NOT EXISTS response_time_ms integer;
+ALTER TABLE public.players DROP COLUMN IF EXISTS skipped_turn;
 
 -- Tabelas privadas de sessões
 CREATE TABLE IF NOT EXISTS public.private_game_admin_sessions (

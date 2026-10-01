@@ -1,11 +1,10 @@
-import { getQuestionAt } from '../data/questions';
-
 export type EngineerMessageCategory =
   | 'acerto_seguido'
   | 'acerto_primeiro'
   | 'recuperacao'
-  | 'punicao_recente'
-  | 'punicoes_multiplas'
+  | 'resposta_rapida'
+  | 'resposta_errada'
+  | 'ficou_para_tras'
   | 'ultimo_lugar'
   | 'lideranca'
   | 'ultrapassagem'
@@ -29,15 +28,20 @@ export const ENGINEER_MESSAGE_BANK: Record<EngineerMessageCategory, readonly str
     'Boa recuperação, equipe. Cabeça erguida e acelerem!',
     'Resposta certeira! Já estamos recuperando terreno.',
   ],
-  punicao_recente: [
-    'Não desistam! Ainda temos corrida pela frente.',
-    'Foi uma rodada difícil, mas seguimos juntos. Vamos reagir!',
-    'Mantenham a calma. Ainda há muitas oportunidades na pista.',
+  resposta_rapida: [
+    'Resposta relâmpago e correta! Excelente reflexo!',
+    'Vocês foram os mais rápidos. Grande largada nesta rodada!',
+    'Precisão e velocidade! Avanço importante para a equipe.',
   ],
-  punicoes_multiplas: [
-    'Foco, equipe! Dias difíceis acontecem, mas vamos virar esse jogo.',
-    'Respirem fundo e confiem no plano. Ainda dá para recuperar.',
-    'A corrida não acabou. Vamos aprender com essa rodada e seguir.',
+  resposta_errada: [
+    'Não foi dessa vez. Respirem e foquem na próxima pergunta!',
+    'A resposta escapou, mas a corrida continua. Vamos tentar de novo!',
+    'Cabeça erguida, equipe. Cada pergunta é uma nova chance!',
+  ],
+  ficou_para_tras: [
+    'A resposta veio mais tarde, mas cada casa conta. Vamos acelerar!',
+    'Seguimos na disputa. Uma resposta rápida pode mudar tudo!',
+    'Continuem atentos: a próxima oportunidade pode render posições.',
   ],
   ultimo_lugar: [
     'Não importa a posição agora, importa não desistir. Vamos com tudo!',
@@ -81,6 +85,8 @@ export interface EngineerAnswer {
   question_index: number;
   selected_option: number;
   is_correct: boolean;
+  response_time_ms: number | null;
+  created_at?: string;
 }
 
 interface EngineerMessageRequest {
@@ -88,7 +94,6 @@ interface EngineerMessageRequest {
   players: EngineerPlayer[];
   answers: EngineerAnswer[];
   questionIndex: number;
-  questionOrder?: readonly number[] | null;
   boardSize: number;
   previousMessage?: string;
 }
@@ -98,42 +103,17 @@ export interface EngineerMessage {
   text: string;
 }
 
-function getAnswerPenalty(
-  answer: EngineerAnswer | undefined,
-  questionOrder?: readonly number[] | null,
-) {
-  if (!answer) return null;
-  return getQuestionAt(answer.question_index, questionOrder)?.options[answer.selected_option]?.penaltyType ?? null;
-}
+function compareResponseSpeed(first: EngineerAnswer, second: EngineerAnswer) {
+  const firstTime = first.response_time_ms ?? Number.POSITIVE_INFINITY;
+  const secondTime = second.response_time_ms ?? Number.POSITIVE_INFINITY;
+  if (firstTime !== secondTime) return firstTime < secondTime ? -1 : 1;
 
-export function hasLostTurnPenalty(
-  answers: EngineerAnswer[],
-  playerId: string,
-  completedQuestionIndex: number,
-  questionOrder?: readonly number[] | null,
-) {
-  const playerAnswers = answers.filter((answer) => answer.player_id === playerId);
-  const completedAnswer = playerAnswers.find(
-    (answer) => answer.question_index === completedQuestionIndex,
-  );
-  if (getAnswerPenalty(completedAnswer, questionOrder) === 'skip') return true;
-
-  const previousAnswer = playerAnswers.find(
-    (answer) => answer.question_index === completedQuestionIndex - 1,
-  );
-  return !completedAnswer && getAnswerPenalty(previousAnswer, questionOrder) === 'skip';
-}
-
-export function hasSkipAnswerForQuestion(
-  answers: EngineerAnswer[],
-  playerId: string,
-  questionIndex: number,
-  questionOrder?: readonly number[] | null,
-) {
-  const answer = answers.find(
-    (candidate) => candidate.player_id === playerId && candidate.question_index === questionIndex,
-  );
-  return getAnswerPenalty(answer, questionOrder) === 'skip';
+  const firstTimestamp = first.created_at ? Date.parse(first.created_at) : Number.POSITIVE_INFINITY;
+  const secondTimestamp = second.created_at ? Date.parse(second.created_at) : Number.POSITIVE_INFINITY;
+  if (Number.isFinite(firstTimestamp - secondTimestamp) && firstTimestamp !== secondTimestamp) {
+    return firstTimestamp < secondTimestamp ? -1 : 1;
+  }
+  return first.player_id.localeCompare(second.player_id);
 }
 
 export function getEngineerMessage({
@@ -141,7 +121,6 @@ export function getEngineerMessage({
   players,
   answers,
   questionIndex,
-  questionOrder,
   boardSize,
   previousMessage,
 }: EngineerMessageRequest): EngineerMessage {
@@ -151,7 +130,12 @@ export function getEngineerMessage({
   const answersByQuestion = new Map(history.map((answer) => [answer.question_index, answer]));
   const currentAnswer = answersByQuestion.get(questionIndex);
   const previousAnswer = answersByQuestion.get(questionIndex - 1);
-  const currentPenalty = getAnswerPenalty(currentAnswer, questionOrder);
+  const correctAnswers = answers
+    .filter((answer) => answer.question_index === questionIndex && answer.is_correct)
+    .sort(compareResponseSpeed);
+  const responseRank = currentAnswer?.is_correct
+    ? correctAnswers.findIndex((answer) => answer.player_id === player.id) + 1
+    : null;
 
   let correctStreak = 0;
   for (let index = questionIndex; index >= 0; index -= 1) {
@@ -159,20 +143,12 @@ export function getEngineerMessage({
     correctStreak += 1;
   }
 
-  let penaltyStreak = 0;
-  for (let index = questionIndex; index >= 0; index -= 1) {
-    const answer = answersByQuestion.get(index);
-    if (!answer || !getAnswerPenalty(answer, questionOrder)) break;
-    penaltyStreak += 1;
-  }
-
   const opponents = players.filter((other) => other.id !== player.id);
   const uniquelyLeading = opponents.length > 0 && opponents.every((other) => player.position > other.position);
   const uniquelyLast = opponents.length > 0 && opponents.every((other) => player.position < other.position);
+  const advancement = responseRank === null ? 0 : Math.max(1, 5 - responseRank);
   const isOvertaking = currentAnswer?.is_correct && (() => {
-    const option = getQuestionAt(questionIndex, questionOrder)?.options[currentAnswer.selected_option];
-    if (!option?.advance) return false;
-    const previousPosition = Math.max(0, player.position - option.advance);
+    const previousPosition = Math.max(0, player.position - advancement);
     return opponents.some(
       (other) => other.position > previousPosition && other.position <= player.position,
     );
@@ -182,14 +158,16 @@ export function getEngineerMessage({
   );
 
   let category: EngineerMessageCategory = 'neutro';
-  if (correctStreak >= 3) category = 'rodada_perfeita';
+  if (currentAnswer && !currentAnswer.is_correct && uniquelyLast) category = 'ultimo_lugar';
+  else if (currentAnswer && !currentAnswer.is_correct) category = 'resposta_errada';
+  else if (correctStreak >= 3) category = 'rodada_perfeita';
+  else if (responseRank === 1) category = 'resposta_rapida';
+  else if (currentAnswer?.is_correct && previousAnswer && !previousAnswer.is_correct) category = 'recuperacao';
   else if (correctStreak >= 2) category = 'acerto_seguido';
   else if (questionIndex === 0 && currentAnswer?.is_correct) category = 'acerto_primeiro';
-  else if (currentAnswer?.is_correct && previousAnswer && !previousAnswer.is_correct) category = 'recuperacao';
-  else if (currentPenalty && currentPenalty !== 'skip' && penaltyStreak >= 2) category = 'punicoes_multiplas';
-  else if (currentPenalty && currentPenalty !== 'skip') category = 'punicao_recente';
   else if (isOvertaking) category = 'ultrapassagem';
   else if (uniquelyLast) category = 'ultimo_lugar';
+  else if (responseRank !== null && responseRank >= 4) category = 'ficou_para_tras';
   else if (uniquelyLeading) category = 'lideranca';
   else if (isCloseFight) category = 'disputa_acirrada';
 

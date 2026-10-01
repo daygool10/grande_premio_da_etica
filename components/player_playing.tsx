@@ -2,64 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, getQuestionAt, questions, TEAM_COLORS } from '../data/questions';
-import {
-  getEngineerMessage,
-  hasLostTurnPenalty,
-  hasSkipAnswerForQuestion,
-} from '../lib/engineerMessages';
+import { getBoardSize, questions, TEAM_COLORS } from '../data/questions';
+import { getEngineerMessage } from '../lib/engineerMessages';
 import { TeamLogo } from './TeamLogo';
-import { F1Car } from './F1Car';
-
-interface PlayerPitStopProps {
-  teamName: string;
-  f1Team: string;
-  launching?: boolean;
-  resultMessage?: string;
-}
-
-function PlayerPitStop({ teamName, f1Team, launching = false, resultMessage }: PlayerPitStopProps) {
-  return (
-    <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[#1a1a2e] p-4">
-      <img
-        src="/player-question-background.png"
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
-      />
-      <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
-      <section className="relative z-10 flex w-full max-w-2xl flex-col items-center text-center" role="status" aria-live="polite">
-        <p className="text-2xl font-black text-white sm:text-3xl">
-          {launching ? 'Voltando para a pista!' : 'Pit stop'}
-        </p>
-        <p className="mt-2 text-base text-gray-300 sm:text-lg">
-          {launching
-            ? `${teamName}, próxima parada: a nova pergunta!`
-            : `${teamName}, a equipe está trocando os pneus.`}
-        </p>
-        <div className={`relative mt-10 aspect-square w-full max-w-[min(76vw,340px)] ${launching ? 'pit-stop-launch' : 'pit-stop-car'}`}>
-          <F1Car team={f1Team} className="h-full w-full drop-shadow-2xl" rotation={270} />
-        </div>
-        <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-red-300">
-          {launching ? 'Acelerando...' : 'Trocando para pneus novos'}
-        </p>
-        {resultMessage && (
-          <p className="mt-5 rounded-xl border border-white/10 bg-gray-900/70 px-5 py-3 text-lg font-bold text-white">
-            {resultMessage}
-          </p>
-        )}
-        {!launching && (
-          <p className="mt-3 animate-pulse text-gray-400">Aguardando a próxima pergunta...</p>
-        )}
-      </section>
-    </main>
-  );
-}
 
 export function PlayerPlaying() {
   const { 
     game, currentPlayer, currentQuestion, players, 
-    answers, selectedOption, hasAnswered, showResult,
+    answers, selectedOption, hasAnswered,
     selectOption, submitAnswer, loadGameState, setViewState
   } = useGameStore();
   const [displayQuestionIndex, setDisplayQuestionIndex] = useState(
@@ -68,6 +18,11 @@ export function PlayerPlaying() {
   const [engineerMessage, setEngineerMessage] = useState('');
   const lastEngineerMessage = useRef('');
   const announcedQuestion = useRef('');
+  const questionStartedAt = useRef(performance.now());
+
+  useEffect(() => {
+    questionStartedAt.current = performance.now();
+  }, [game?.id, game?.current_question_index]);
 
   useEffect(() => {
     loadGameState();
@@ -130,44 +85,24 @@ export function PlayerPlaying() {
   const isQuestionAdvancing = Boolean(
     game && game.current_question_index > displayQuestionIndex,
   );
-  const hasLostTurn = Boolean(
-    currentPlayer?.skipped_turn ||
-    (isQuestionAdvancing && currentPlayer && hasLostTurnPenalty(
-      answers,
-      currentPlayer.id,
-      displayQuestionIndex,
-      game?.question_order,
-    )),
-  );
-  const isApplyingSkipPenalty = Boolean(
-    isQuestionAdvancing &&
-    currentPlayer &&
-    hasSkipAnswerForQuestion(
-      answers,
-      currentPlayer.id,
-      displayQuestionIndex,
-      game?.question_order,
-    ),
+  const completedAnswer = currentPlayer && answers.find(
+    (answer) =>
+      answer.player_id === currentPlayer.id &&
+      answer.question_index === displayQuestionIndex,
   );
 
   useEffect(() => {
-    if (!game || !currentPlayer || !isQuestionAdvancing) return;
+    if (!game || !currentPlayer || !isQuestionAdvancing || !completedAnswer) return;
 
     const announcementKey = `${game.id}:${game.current_question_index}:${currentPlayer.id}`;
     if (announcedQuestion.current === announcementKey) return;
     announcedQuestion.current = announcementKey;
-
-    if (hasLostTurn) {
-      setEngineerMessage('');
-      return;
-    }
 
     const { text } = getEngineerMessage({
       player: currentPlayer,
       players,
       answers,
       questionIndex: displayQuestionIndex,
-      questionOrder: game.question_order,
       boardSize,
       previousMessage: lastEngineerMessage.current,
     });
@@ -177,9 +112,9 @@ export function PlayerPlaying() {
     answers,
     boardSize,
     currentPlayer,
+    completedAnswer,
     displayQuestionIndex,
     game,
-    hasLostTurn,
     isQuestionAdvancing,
     players,
   ]);
@@ -199,35 +134,11 @@ export function PlayerPlaying() {
   }
 
   const selectedAnswer = selectedOption === null ? null : q.options[selectedOption];
-  const hasAnsweredCurrentQuestion = answers.some(
-    (answer) =>
-      answer.player_id === currentPlayer.id &&
-      answer.question_index === game?.current_question_index,
-  );
   const resultMessage = selectedAnswer
     ? selectedAnswer.isCorrect
-      ? `✅ Acertou! Avance ${selectedAnswer.advance} casa${selectedAnswer.advance > 1 ? 's' : ''}!`
-      : `❌ Errou! ${selectedAnswer.penalty || 'Não avance nesta rodada.'}`
+      ? '✅ Resposta correta! Avanço definido pelo tempo de resposta.'
+      : '❌ Resposta incorreta. Continue tentando na próxima rodada!'
     : '';
-
-  if (isQuestionAdvancing && hasLostTurn) {
-    return (
-      <PlayerPitStop
-        teamName={currentPlayer.team_name}
-        f1Team={currentPlayer.f1_team}
-        launching={!currentPlayer.skipped_turn && !isApplyingSkipPenalty}
-      />
-    );
-  }
-
-  if (currentPlayer.skipped_turn && !hasAnsweredCurrentQuestion) {
-    return (
-      <PlayerPitStop
-        teamName={currentPlayer.team_name}
-        f1Team={currentPlayer.f1_team}
-      />
-    );
-  }
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-[#1a1a2e] p-4">
@@ -341,7 +252,7 @@ export function PlayerPlaying() {
         {/* Submit Button */}
         {!hasAnswered && (
           <button
-            onClick={submitAnswer}
+            onClick={() => submitAnswer(Math.max(0, performance.now() - questionStartedAt.current))}
             disabled={selectedOption === null}
             className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100"
           >

@@ -148,13 +148,13 @@ app.patch('/games/:id', async (req, res) => {
 // Criar jogador
 app.post('/players', async (req, res) => {
   try {
-    const { game_id, team_name, f1_team, position, skipped_turn, is_connected, last_seen, player_session_token } = req.body;
+    const { game_id, team_name, f1_team, position, is_connected, last_seen, player_session_token } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO players (game_id, team_name, f1_team, position, skipped_turn, is_connected, last_seen, player_session_token)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO players (game_id, team_name, f1_team, position, is_connected, last_seen, player_session_token)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [game_id, team_name, f1_team, position, skipped_turn, is_connected, last_seen, player_session_token]
+      [game_id, team_name, f1_team, position, is_connected, last_seen, player_session_token]
     );
 
     res.json(sanitizePlayer(result.rows[0]));
@@ -226,7 +226,7 @@ app.get('/games/:id/players', async (req, res) => {
 // Atualizar jogador
 app.patch('/players/:id', async (req, res) => {
   try {
-    const { position, skipped_turn, is_connected, last_seen } = req.body;
+    const { position, is_connected, last_seen } = req.body;
     const playerId = req.params.id;
 
     const updates = [];
@@ -236,10 +236,6 @@ app.patch('/players/:id', async (req, res) => {
     if (position !== undefined) {
       updates.push(`position = $${paramIndex++}`);
       values.push(position);
-    }
-    if (skipped_turn !== undefined) {
-      updates.push(`skipped_turn = $${paramIndex++}`);
-      values.push(skipped_turn);
     }
     if (is_connected !== undefined) {
       updates.push(`is_connected = $${paramIndex++}`);
@@ -287,8 +283,8 @@ app.post('/players/batch-update', async (req, res) => {
 
       for (const update of updates) {
         await client.query(
-          'UPDATE players SET position = $1, skipped_turn = $2 WHERE id = $3',
-          [update.position, update.skipped_turn, update.id]
+          'UPDATE players SET position = $1 WHERE id = $2',
+          [update.position, update.id]
         );
       }
 
@@ -313,13 +309,16 @@ app.post('/players/batch-update', async (req, res) => {
 // Criar resposta
 app.post('/answers', async (req, res) => {
   try {
-    const { game_id, player_id, question_index, selected_option, is_correct } = req.body;
+    const { game_id, player_id, question_index, selected_option, is_correct, response_time_ms } = req.body;
+    const responseTimeMs = Number.isFinite(response_time_ms)
+      ? Math.max(0, Math.round(response_time_ms))
+      : null;
 
     const result = await pool.query(
-      `INSERT INTO answers (game_id, player_id, question_index, selected_option, is_correct)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO answers (game_id, player_id, question_index, selected_option, is_correct, response_time_ms)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [game_id, player_id, question_index, selected_option, is_correct]
+      [game_id, player_id, question_index, selected_option, is_correct, responseTimeMs]
     );
 
     res.json(result.rows[0]);
@@ -453,6 +452,15 @@ app.get('/health', async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+async function startServer() {
+  await pool.query('ALTER TABLE answers ADD COLUMN IF NOT EXISTS response_time_ms integer');
+  await pool.query('ALTER TABLE players DROP COLUMN IF EXISTS skipped_turn');
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error('Could not prepare the database:', error);
+  process.exit(1);
 });

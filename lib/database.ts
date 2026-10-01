@@ -36,7 +36,6 @@ interface Player {
   team_name: string;
   f1_team: string;
   position: number;
-  skipped_turn: boolean;
   is_connected: boolean;
   last_seen: string;
 }
@@ -48,6 +47,7 @@ interface Answer {
   question_index: number;
   selected_option: number;
   is_correct: boolean;
+  response_time_ms: number | null;
   created_at?: string;
 }
 
@@ -95,7 +95,6 @@ export const database = {
     team_name: string;
     f1_team: string;
     position: number;
-    skipped_turn: boolean;
     is_connected: boolean;
     last_seen: string;
     player_session_token: string;
@@ -133,7 +132,7 @@ export const database = {
     });
   },
 
-  async batchUpdatePlayers(updates: Array<{ id: string; position: number; skipped_turn: boolean }>): Promise<void> {
+  async batchUpdatePlayers(updates: Array<{ id: string; position: number }>): Promise<void> {
     await apiFetch('/players/batch-update', {
       method: 'POST',
       body: JSON.stringify({ updates }),
@@ -146,6 +145,7 @@ export const database = {
     question_index: number;
     selected_option: number;
     is_correct: boolean;
+    response_time_ms: number;
   }): Promise<Answer> {
     return apiFetch<Answer>('/answers', {
       method: 'POST',
