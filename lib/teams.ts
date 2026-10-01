@@ -23,6 +23,15 @@ export const TEAMS: readonly Team[] = [
   { id: 'audi', label: 'Audi', color: '#C0C0C0', logo: '/team-logos/audi.svg', livery: { body: '#c0c0c0', accent: '#20242b', detail: '#bb0a30' }, gridSlot: 9 },
   { id: 'cadillac', label: 'Cadillac', color: '#00594F', logo: '/team-logos/cadillac.svg', livery: { body: '#161b1d', accent: '#b6a36a', detail: '#f4f0e6' }, gridSlot: 10 },
   { id: 'haas', label: 'Haas', color: '#B6BABD', logo: '/team-logos/haas.png', livery: { body: '#b6babd', accent: '#15151e', detail: '#e10600' }, gridSlot: 11 },
+  { id: 'lotus', label: 'Lotus', color: '#B8860B', logo: '', livery: { body: '#101820', accent: '#b8860b', detail: '#f3ead0' }, gridSlot: 12 },
+  { id: 'brabham', label: 'Brabham', color: '#187A3C', logo: '', livery: { body: '#187a3c', accent: '#f5f5f5', detail: '#e8b800' }, gridSlot: 13 },
+  { id: 'tyrrell', label: 'Tyrrell', color: '#25A4C9', logo: '', livery: { body: '#25a4c9', accent: '#f5f5f5', detail: '#0b1d3a' }, gridSlot: 14 },
+  { id: 'benetton', label: 'Benetton', color: '#9CCB3B', logo: '', livery: { body: '#9ccb3b', accent: '#f5f5f5', detail: '#1b3c8c' }, gridSlot: 15 },
+  { id: 'jordan', label: 'Jordan', color: '#FFD700', logo: '', livery: { body: '#ffd700', accent: '#101820', detail: '#c8102e' }, gridSlot: 16 },
+  { id: 'sauber', label: 'Sauber', color: '#D8481F', logo: '', livery: { body: '#d8481f', accent: '#f5f5f5', detail: '#1c1c1c' }, gridSlot: 17 },
+  { id: 'renault', label: 'Renault', color: '#A300D4', logo: '', livery: { body: '#2a2a6e', accent: '#ffd700', detail: '#f5f5f5' }, gridSlot: 18 },
+  { id: 'toro-rosso', label: 'Toro Rosso', color: '#0E1626', logo: '', livery: { body: '#0e1626', accent: '#e3272e', detail: '#f5f5f5' }, gridSlot: 19 },
+  { id: 'brawn', label: 'Brawn', color: '#863FE8', logo: '', livery: { body: '#f2f3f5', accent: '#1c1c1c', detail: '#c8102e' }, gridSlot: 20 },
 ] as const;
 
 export const F1_TEAMS: readonly string[] = TEAMS.map((team) => team.label);

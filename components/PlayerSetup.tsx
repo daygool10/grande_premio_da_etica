@@ -61,8 +61,8 @@ export function PlayerSetup() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="max-w-lg w-full">
+    <div className="min-h-screen flex flex-col items-center p-4">
+      <div className="max-w-lg w-full my-auto">
         <div className="text-center mb-6">
           <span className="inline-block bg-red-600 px-4 py-2 rounded-lg">
             <span className="text-3xl font-black">F1</span>

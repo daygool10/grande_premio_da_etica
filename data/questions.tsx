@@ -1,3 +1,5 @@
+import { TEAMS } from '../lib/teams';
+
 export interface Question {
   id: number;
   title: string;
@@ -430,4 +432,4 @@ export function getQuestionAt(
   return questions.find((question) => question.id === questionId) ?? null;
 }
 
-export const MAX_TEAMS = 11;
+export const MAX_TEAMS = TEAMS.length;
