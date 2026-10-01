@@ -81,7 +81,7 @@ export function PlayerSetup() {
               setTeamName(e.target.value);
               setError('');
             }}
-            placeholder="Ex: Pilotos da Velocidade"
+            placeholder="Nome dos jogadores"
             className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-lg text-white focus:outline-none focus:border-red-500"
           />
         </div>
