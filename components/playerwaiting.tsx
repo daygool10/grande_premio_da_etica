@@ -76,7 +76,7 @@ export function PlayerWaiting() {
               </g>
               <path d="M17 39a48 48 0 0 1 15-20" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-300">Pneu SOFT aquecendo</p>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-300">Aquecendo os pneus</p>
           </div>
           <div className="rounded-2xl border border-gray-700 bg-gray-800/70 p-6 backdrop-blur-sm">
             <p className="text-base uppercase tracking-wider text-gray-300 sm:text-lg">Código da partida</p>
