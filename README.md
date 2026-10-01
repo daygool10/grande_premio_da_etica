@@ -30,13 +30,14 @@ Equipes disponíveis: McLaren, Ferrari, Red Bull, Mercedes, Aston Martin, Willia
 
 ### 3. Responder às perguntas
 
-As equipes elegíveis recebem a mesma pergunta. Cada pergunta apresenta um caso de ética e quatro alternativas, com uma resposta correta. O administrador aguarda as respostas, seleciona **Revelar Resposta** e, depois, **Próxima Pergunta**.
+Todas as equipes que ainda não terminaram recebem a mesma pergunta e podem responder. Cada caso de ética apresenta quatro alternativas e uma resposta correta. O tempo de resposta é medido individualmente desde a exibição da pergunta e salvo com a resposta.
 
-- A resposta correta avança a quantidade de casas definida para aquela pergunta, limitada à linha de chegada.
-- A resposta incorreta aplica a penalidade descrita na alternativa: perder uma rodada ou voltar uma ou duas casas, ou ao início.
-- A resposta correta só é revelada pelo administrador depois que todas as equipes elegíveis responderam.
+- Quando o administrador seleciona **Revelar Resposta**, as respostas corretas são ordenadas da mais rápida para a mais lenta. Elas avançam 4, 3, 2 ou 1 casa, respectivamente; respostas corretas a partir da quarta avançam 1 casa.
+- Uma resposta incorreta avança 0 casas. Não há punições nem perda de rodada.
+- O avanço é aplicado na revelação, e a alternativa correta é destacada na tela do administrador e do jogador.
+- O administrador revela a resposta depois que todas as equipes ainda na corrida responderam.
+- Ao avançar para a pergunta seguinte, cada jogador recebe uma mensagem contextual do engenheiro sobre seu desempenho, sequência de acertos, velocidade e posição na corrida.
 - Equipes que já terminaram não precisam responder às perguntas seguintes.
-- Quando uma equipe perde uma rodada, ela aguarda a próxima pergunta sem responder à rodada atual.
 - A sala de espera considera uma dupla desconectada depois de 90 segundos sem heartbeat. Antes da largada, o administrador pode removê-la; a equipe F1 volta a ficar disponível.
 - A identidade e a partida do jogador ficam salvas no armazenamento local do navegador. Ao retornar no mesmo navegador, escolha retomar a mesma dupla (mantendo posição e respostas) ou, enquanto a sala ainda aguarda a largada, remover a dupla anterior e configurar outra. Depois que a corrida começa, a troca de identidade fica bloqueada para preservar o andamento da partida.
 
@@ -44,14 +45,13 @@ As equipes elegíveis recebem a mesma pergunta. Cada pergunta apresenta um caso 
 
 O percurso é calculado com **1,5 casa por pergunta**, com mínimo de 10 casas. Portanto, uma partida padrão de 20 perguntas usa 30 casas. A posição é limitada ao tamanho calculado para a partida.
 
-As equipes que cruzam a linha de chegada são classificadas pela pergunta em que terminaram. Se terminarem na mesma pergunta, fica à frente quem enviou a resposta primeiro. A tela de resultados mostra o pódio e a classificação das equipes.
+As posições são atualizadas a cada revelação e limitadas ao tamanho do percurso. As equipes que terminam são ordenadas pela pergunta em que cruzaram a linha; em caso de empate, vale o horário de envio registrado pelo servidor. Ao fim da corrida, as telas do jogador e do administrador exibem o mesmo pódio (logo, carrinho e nome da equipe) e a classificação completa. Depois que os resultados aparecem, o jogador pode selecionar **Participar de uma nova corrida**; a sessão e o estado locais são limpos antes de voltar à tela inicial.
 
 ## Telas e animações
 
 - **Sala do administrador:** mostra o código da partida, o grid de largada e as equipes conectadas. O administrador inicia a corrida, revela as respostas e avança as perguntas.
 - **Espera dos jogadores:** mostra o código, as equipes conectadas e uma animação de pneu soft girando. Ao iniciar a partida, o pneu sai da tela, o semáforo muda de vermelho para verde e, em seguida, aparece a primeira pergunta.
-- **Pit stop do jogador:** depois de responder, o jogador continua na tela da pergunta e aguarda a revelação/rodada seguinte. Quem estiver cumprindo uma rodada perdida vê o carro de sua equipe em uma animação de pit stop. Quando o administrador avança, o carro acelera para a direita antes de a nova pergunta aparecer.
-- **Resultados:** apresenta a posição final das equipes e o pódio.
+- **Resultados:** jogador e administrador veem pódio responsivo com logos e carrinhos pareados às equipes, seguido pela classificação completa. Após a exibição, o jogador pode iniciar sua participação em uma nova corrida.
 
 As interfaces usam as cores e os carrinhos correspondentes às equipes. As animações respeitam a preferência do dispositivo por movimento reduzido.
 
@@ -144,6 +144,10 @@ npm run preview
 - Entrada de jogadores restrita a salas em espera, com validação transacional no banco.
 - Retomada da identidade/partida do jogador pelo mesmo navegador, heartbeat de presença e remoção de participantes realmente offline antes da largada.
 - Resultados finais exibidos mesmo quando menos de três equipes cruzam a linha de chegada.
-- Animações de largada, pit stop, troca de pneus e retorno à pista.
+- Avanço das equipes baseado no tempo individual de resposta correta; respostas erradas não avançam nem aplicam punições.
+- Mensagens do engenheiro com variações contextuais para rapidez, acertos, erros, sequência e posição na corrida.
+- Pódio compartilhado entre as telas de jogador e administrador, com logos, carrinhos, nomes e classificação completa; retorno do jogador limpa o estado local da partida.
+- Migração idempotente da API para persistir o tempo de resposta e remover o antigo estado de rodada perdida.
+- Animações de largada e troca de pneus na sala de espera.
 - Melhorias de legibilidade, tamanhos de fonte, imagens de fundo e layout das telas de espera, entrada e perguntas.
 - **Persistência em PostgreSQL com API Express e Docker.**

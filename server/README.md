@@ -23,6 +23,8 @@ Servidor Express que fornece a API REST do jogo e persiste os dados em PostgreSQ
 - `GET /games/:id/answers` - Listar respostas de uma partida
 - `GET /games/:id/answers/question/:questionIndex` - Listar respostas de uma questão específica
 
+`POST /answers` recebe `response_time_ms`, o tempo individual da resposta em milissegundos. A revelação ordena as respostas corretas por esse tempo para calcular o avanço dos carrinhos; respostas incorretas não avançam.
+
 ### RPC (Funções de presença)
 - `POST /rpc/player_heartbeat` - Heartbeat do jogador
 - `POST /rpc/remove_offline_player` - Remover jogador offline
@@ -34,6 +36,12 @@ Servidor Express que fornece a API REST do jogo e persiste os dados em PostgreSQ
 ## Executar localmente
 
 Configure `DATABASE_URL` ou as variáveis `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` e `PGDATABASE` antes de iniciar o servidor.
+
+Ao iniciar, o servidor aplica migrações idempotentes: adiciona `answers.response_time_ms` se necessário e remove `players.skipped_turn`, que pertencia ao sistema antigo de punições. Ao atualizar uma instalação Docker existente, reconstrua a API:
+
+```bash
+docker compose up -d --build api
+```
 
 ```bash
 cd server
