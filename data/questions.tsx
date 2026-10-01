@@ -399,8 +399,9 @@ export const questions: Question[] = [
   },
 ];
 
-export const MAX_QUESTIONS_PER_GAME = 20;
-
+// The default race deals every question, in shuffled order. A host-specified
+// race length is an open product decision, so there is deliberately no count
+// parameter here yet.
 export function createQuestionOrder(): number[] {
   const shuffledQuestions = [...questions];
 
@@ -412,9 +413,7 @@ export function createQuestionOrder(): number[] {
     ];
   }
 
-  return shuffledQuestions
-    .slice(0, MAX_QUESTIONS_PER_GAME)
-    .map((question) => question.id);
+  return shuffledQuestions.map((question) => question.id);
 }
 
 export function getQuestionAt(
