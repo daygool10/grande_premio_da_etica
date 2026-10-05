@@ -1,6 +1,47 @@
 import { database } from '../lib/database';
-import { PLAYER_SESSION_KEY, ADMIN_ID_PREFIX, PlayerSession } from './gameTypes';
-import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
+import { PLAYER_SESSION_KEY, ADMIN_ID_PREFIX, ADMIN_SESSION_KEY, PlayerSession } from './gameTypes';
+import type { AdminSession, GameStore, GameStoreSet, GameStoreGet, ViewState } from './gameTypes';
+
+// Her admin session is restored first, because a host who reloads has to come
+// back to the same admin screen; only then do we look for a player seat.
+async function restoreAdminSession(set: GameStoreSet): Promise<boolean> {
+  const saved = window.localStorage.getItem(ADMIN_SESSION_KEY);
+  if (!saved) return false;
+
+  let adminSession: AdminSession | null = null;
+  try {
+    const parsed = JSON.parse(saved) as AdminSession;
+    if (parsed.gameId && parsed.viewState?.startsWith('admin_')) adminSession = parsed;
+  } catch {
+    adminSession = null;
+  }
+
+  if (!adminSession) {
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    return false;
+  }
+
+  const adminSessionToken = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${adminSession.gameId}`);
+  const tokenValid = adminSessionToken
+    ? await database.adminSessionValid(adminSession.gameId, adminSessionToken)
+    : false;
+  if (!tokenValid) {
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    return false;
+  }
+
+  const game = await database.getGameById(adminSession.gameId);
+  if (!game) {
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    return false;
+  }
+
+  const viewState: ViewState = game.phase === 'waiting'
+    ? adminSession.viewState === 'admin_game_code' ? 'admin_game_code' : 'admin_waiting'
+    : game.phase === 'finished' ? 'admin_finished' : 'admin_playing';
+  set({ game, viewState });
+  return true;
+}
 
 export function createSessionActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'checkPlayerRecovery' | 'resumePlayerSession' | 'startFreshPlayerSession' | 'removeOfflinePlayer' | 'heartbeatPlayer'> {
   return {
@@ -8,6 +49,11 @@ export function createSessionActions(set: GameStoreSet, get: GameStoreGet): Pick
     if (typeof window === 'undefined') return;
     set({ isCheckingRecovery: true, recoveryError: '' });
     try {
+      if (await restoreAdminSession(set)) {
+        await get().loadGameState();
+        return;
+      }
+
       const stored = window.localStorage.getItem(PLAYER_SESSION_KEY);
       if (!stored) return;
       const session = JSON.parse(stored) as PlayerSession;

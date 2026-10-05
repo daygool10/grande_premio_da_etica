@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
 import { questions, type Question } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
 import { questionDeltas, overtakeReport } from '../lib/debrief';
+import { getEngineerMessage, hasLostTurnPenalty, hasSkipAnswerForQuestion } from '../lib/engineerMessages';
 import { finishLineForOrder, hasReachedFinishLine } from '../server/shared/scoring.js';
 import { playCue } from '../lib/sound';
 import { TeamLogo } from './TeamLogo';
@@ -29,6 +32,11 @@ export function PlayerPlaying() {
   const [displayQuestionIndex, setDisplayQuestionIndex] = useState(
     () => game?.current_question_index ?? 0,
   );
+  // The radio message is stored with the announcement it belongs to, so a
+  // message from the previous question cannot survive into the next one.
+  const [engineerMessage, setEngineerMessage] = useState<{ key: string; text: string } | null>(null);
+  const lastEngineerMessage = useRef('');
+  const announcedQuestion = useRef('');
 
   const orderedQuestions = useMemo(
     () => buildOrderedQuestions(game?.question_order),
@@ -118,6 +126,74 @@ export function PlayerPlaying() {
 
   const q = currentQuestion;
 
+  // Her radio messages and her lost-turn screens both key off the moment the
+  // question index moves past the one still on screen. The threshold is the
+  // derived finish line here, not a board size: position is a score.
+  const isQuestionAdvancing = Boolean(
+    game && game.current_question_index > displayQuestionIndex,
+  );
+  const hasLostTurn = Boolean(
+    currentPlayer?.skipped_turn ||
+    (isQuestionAdvancing && currentPlayer && hasLostTurnPenalty(
+      answers,
+      currentPlayer.id,
+      displayQuestionIndex,
+      game?.question_order,
+    )),
+  );
+  const isApplyingSkipPenalty = Boolean(
+    isQuestionAdvancing &&
+    currentPlayer &&
+    hasSkipAnswerForQuestion(
+      answers,
+      currentPlayer.id,
+      displayQuestionIndex,
+      game?.question_order,
+    ),
+  );
+
+  useEffect(() => {
+    if (!game || !currentPlayer || !isQuestionAdvancing) return;
+
+    const announcementKey = `${game.id}:${game.current_question_index}:${currentPlayer.id}`;
+    if (announcedQuestion.current === announcementKey) return;
+    announcedQuestion.current = announcementKey;
+
+    if (hasLostTurn) return;
+
+    const { text } = getEngineerMessage({
+      player: currentPlayer,
+      players,
+      answers,
+      questionIndex: displayQuestionIndex,
+      questionOrder: game.question_order,
+      boardSize: finishLine,
+      previousMessage: lastEngineerMessage.current,
+    });
+    lastEngineerMessage.current = text;
+    setEngineerMessage({ key: announcementKey, text });
+  }, [
+    answers,
+    finishLine,
+    currentPlayer,
+    displayQuestionIndex,
+    game,
+    hasLostTurn,
+    isQuestionAdvancing,
+    players,
+  ]);
+
+  useEffect(() => {
+    if (!engineerMessage) return;
+    const timer = window.setTimeout(() => setEngineerMessage(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [engineerMessage]);
+
+  // A message only shows while it belongs to the question on screen and the
+  // player has not just lost the turn it was about.
+  const radioKey = `${game?.id}:${game?.current_question_index}:${currentPlayer?.id}`;
+  const radioMessage = engineerMessage?.key === radioKey && !hasLostTurn ? engineerMessage.text : '';
+
   if (!q || !currentPlayer) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -138,9 +214,13 @@ export function PlayerPlaying() {
       : `❌ Errou! ${selectedAnswer.penalty || 'Não avance nesta rodada.'}`
     : '';
 
-  if (game && game.current_question_index > displayQuestionIndex) {
+  if (isQuestionAdvancing && hasLostTurn) {
     return (
-      <PlayerPitStop teamName={currentPlayer.team_name} f1Team={currentPlayer.f1_team} launching />
+      <PlayerPitStop
+        teamName={currentPlayer.team_name}
+        f1Team={currentPlayer.f1_team}
+        launching={!currentPlayer.skipped_turn && !isApplyingSkipPenalty}
+      />
     );
   }
 
@@ -159,6 +239,32 @@ export function PlayerPlaying() {
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
       />
       <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+      <AnimatePresence>
+        {radioMessage && (
+          <motion.aside
+            key={radioMessage}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            role="status"
+            aria-live="polite"
+            className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-2xl items-center gap-4 rounded-xl border border-cyan-300/40 border-l-4 border-l-cyan-300 bg-[#101b27]/95 px-5 py-4 text-left shadow-2xl backdrop-blur-md sm:px-6"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-300/15 text-cyan-200">
+              <Radio className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
+                Rádio da equipe · {currentPlayer.team_name}
+              </span>
+              <span className="mt-1 block text-base font-semibold leading-snug text-white sm:text-lg">
+                {radioMessage}
+              </span>
+            </span>
+          </motion.aside>
+        )}
+      </AnimatePresence>
       <div className="relative z-10 mx-auto w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

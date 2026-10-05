@@ -413,6 +413,26 @@ app.get('/games/:id/answers/question/:questionIndex', async (req, res) => {
 // RPC - Funções de presença
 // ============================================
 
+// Validar sessão do administrador
+app.post('/rpc/admin_session_valid', async (req, res) => {
+  try {
+    const { p_game_id, p_session_token } = req.body;
+
+    const result = await pool.query(
+      `SELECT EXISTS (
+        SELECT 1 FROM private_game_admin_sessions
+        WHERE game_id = $1 AND session_token = $2
+      ) as result`,
+      [p_game_id, p_session_token]
+    );
+
+    res.json(result.rows[0].result);
+  } catch (error) {
+    console.error('Error validating admin session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Heartbeat do jogador
 app.post('/rpc/player_heartbeat', async (req, res) => {
   try {

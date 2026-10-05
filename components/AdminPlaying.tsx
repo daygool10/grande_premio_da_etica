@@ -87,7 +87,7 @@ export function AdminPlaying() {
 
   return (
     <div className="min-h-screen p-4 bg-[#1a1a2e]">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto w-full max-w-[1800px]">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">

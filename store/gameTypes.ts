@@ -31,7 +31,7 @@ export interface Answer {
   created_at?: string;
 }
 
-type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
+export type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
 type SetupPlayerResult =
   | 'success'
   | 'team_taken'
@@ -41,6 +41,7 @@ type SetupPlayerResult =
   | 'error';
 export const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
 export const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
+export const ADMIN_SESSION_KEY = 'f1-ethics-admin-session';
 export const DATABASE_SCHEMA_ERROR =
   'A estrutura do banco de dados está desatualizada. Execute o docker-compose e tente novamente.';
 
@@ -51,6 +52,13 @@ export interface PlayerSession {
   teamName: string;
   f1Team: string;
   sessionToken: string;
+}
+
+// The host's own session: which game the admin token belongs to and which admin
+// screen the reload should come back to.
+export interface AdminSession {
+  gameId: string;
+  viewState: Extract<ViewState, `admin_${string}`>;
 }
 
 export interface GameStore {

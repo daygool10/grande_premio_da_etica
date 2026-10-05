@@ -1,7 +1,7 @@
 import { database } from '../lib/database';
 import { createQuestionOrder } from '../data/questions';
-import { PLAYER_SESSION_KEY, ADMIN_ID_PREFIX, PlayerSession } from './gameTypes';
-import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
+import { PLAYER_SESSION_KEY, ADMIN_ID_PREFIX, ADMIN_SESSION_KEY, PlayerSession } from './gameTypes';
+import type { AdminSession, GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
 function generateGameCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -18,9 +18,26 @@ function generateSessionToken(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function rememberAdminSession(gameId: string, viewState: AdminSession['viewState']): void {
+  if (typeof window === 'undefined') return;
+  const session: AdminSession = { gameId, viewState };
+  window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+}
+
 export function createLobbyActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'setViewState' | 'createGame' | 'joinGame' | 'setupPlayer' | 'selectOption' | 'submitAnswer'> {
   return {
-  setViewState: (state) => set({ viewState: state }),
+  setViewState: (state) => {
+    const { game } = get();
+    if (typeof window !== 'undefined') {
+      if (state.startsWith('admin_') && game) {
+        const adminSessionToken = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
+        if (adminSessionToken) rememberAdminSession(game.id, state as AdminSession['viewState']);
+      } else if (state === 'start') {
+        window.localStorage.removeItem(ADMIN_SESSION_KEY);
+      }
+    }
+    set({ viewState: state });
+  },
 
   createGame: async () => {
     const gameCode = generateGameCode();
@@ -41,6 +58,7 @@ export function createLobbyActions(set: GameStoreSet, get: GameStoreGet): Pick<G
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(`${ADMIN_ID_PREFIX}${game.id}`, adminSessionToken);
     }
+    rememberAdminSession(game.id, 'admin_game_code');
     set({ game, viewState: 'admin_game_code' });
   },
 

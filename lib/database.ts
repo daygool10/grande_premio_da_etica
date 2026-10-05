@@ -186,6 +186,16 @@ export const database = {
     });
   },
 
+  async adminSessionValid(gameId: string, sessionToken: string): Promise<boolean> {
+    return apiFetch<boolean>('/rpc/admin_session_valid', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_game_id: gameId,
+        p_session_token: sessionToken,
+      }),
+    });
+  },
+
   async removeOfflinePlayer(playerId: string, adminToken: string): Promise<boolean> {
     return apiFetch<boolean>('/rpc/remove_offline_player', {
       method: 'POST',
