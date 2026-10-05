@@ -67,7 +67,7 @@ export function PlayerWaiting() {
               className="waiting-soft-tire h-28 w-28 drop-shadow-2xl sm:h-32 sm:w-32"
             >
               <circle cx="60" cy="60" r="53" fill="#111318" stroke="#343942" strokeWidth="4" />
-              <circle cx="60" cy="60" r="45" fill="none" stroke="#ef3340" strokeWidth="5" />
+              <circle cx="60" cy="60" r="45" fill="none" stroke="#ef3340" strokeWidth="6" />
               <circle cx="60" cy="60" r="37" fill="#20242c" stroke="#090b10" strokeWidth="5" />
               <circle cx="60" cy="60" r="27" fill="#aeb5c0" stroke="#171a20" strokeWidth="4" />
               <circle cx="60" cy="60" r="20" fill="#343a44" stroke="#d1d5db" strokeWidth="2" />
@@ -75,7 +75,6 @@ export function PlayerWaiting() {
               <g stroke="#252a33" strokeWidth="5" strokeLinecap="round">
                 <path d="M60 34v17M60 69v17M34 60h17M69 60h17M42 42l12 12M66 66l12 12M78 42 66 54M54 66 42 78" />
               </g>
-              <path d="M17 39a48 48 0 0 1 15-20" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-red-300">Aquecendo os pneus</p>
           </div>
@@ -96,7 +95,7 @@ export function PlayerWaiting() {
                 className="waiting-soft-tire waiting-soft-tire-exit h-32 w-32 drop-shadow-2xl"
               >
                 <circle cx="60" cy="60" r="53" fill="#111318" stroke="#343942" strokeWidth="4" />
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#ef3340" strokeWidth="5" />
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#ef3340" strokeWidth="6" />
                 <circle cx="60" cy="60" r="37" fill="#20242c" stroke="#090b10" strokeWidth="5" />
                 <circle cx="60" cy="60" r="27" fill="#aeb5c0" stroke="#171a20" strokeWidth="4" />
                 <circle cx="60" cy="60" r="20" fill="#343a44" stroke="#d1d5db" strokeWidth="2" />

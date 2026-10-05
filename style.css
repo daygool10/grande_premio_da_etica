@@ -91,16 +91,17 @@ body {
 }
 
 @keyframes softTireRoll {
-  0%, 100% {
-    transform: translateY(0) rotate(0deg);
+  from {
+    transform: rotate(0deg);
   }
-  50% {
-    transform: translateY(-8px) rotate(180deg);
+  to {
+    transform: rotate(360deg);
   }
 }
 
 .waiting-soft-tire {
-  animation: softTireRoll 1.2s linear infinite;
+  animation: softTireRoll 1.1s linear infinite;
+  transform-origin: 50% 50%;
 }
 
 .waiting-soft-tire-exit {

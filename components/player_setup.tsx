@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DATABASE_SCHEMA_ERROR, useGameStore } from '../store/GameStore';
 import { F1_TEAMS, TEAM_COLORS } from '../data/questions';
+import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
 
 export function PlayerSetup() {
@@ -61,8 +62,15 @@ export function PlayerSetup() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="max-w-lg w-full">
+    <div className="relative isolate min-h-screen flex flex-col items-center justify-center overflow-hidden p-4">
+      <img
+        src={assetPath('/pit-lane-background.png')}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
+      />
+      <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+      <div className="relative z-10 max-w-lg w-full">
         <div className="text-center mb-6">
           <span className="inline-block bg-red-600 px-4 py-2 rounded-lg">
             <span className="text-3xl font-black">F1</span>
