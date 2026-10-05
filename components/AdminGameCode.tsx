@@ -25,7 +25,7 @@ export function AdminGameCode() {
         
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-red-500/50 rounded-2xl p-8 mb-6">
           <p className="text-gray-400 mb-2 text-sm uppercase tracking-wider">Código</p>
-          <div className="text-6xl font-black tracking-[0.3em] text-red-400 font-mono">
+          <div className="break-all font-mono text-4xl font-black tracking-[0.15em] text-red-400 sm:text-6xl sm:tracking-[0.3em]">
             {game?.game_code}
           </div>
         </div>

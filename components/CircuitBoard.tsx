@@ -205,7 +205,7 @@ function TrackCar({
       <div className="-translate-x-1/2 -translate-y-1/2">
         <motion.div style={{ rotate: rotation }}>
           <div
-            className="flex text-[48px] sm:text-[60px] xl:text-[76px]"
+            className="flex text-[40px] sm:text-[56px] xl:text-[76px]"
             style={{
               transform: `translate(${sideOffset}em, ${rowOffset}em)`,
               transition: reduceMotion ? 'none' : 'transform 500ms ease-in-out',
@@ -234,7 +234,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
-      <div className="relative isolate aspect-[5/2] min-w-[720px] overflow-hidden bg-[#10251f]">
+      <div className="relative isolate aspect-[5/2] min-w-[560px] overflow-hidden bg-[#10251f] sm:min-w-[720px]">
         <svg
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"

@@ -7,7 +7,7 @@ interface F1CarProps {
   imageScale?: number;
 }
 
-export function F1Car({ team, className = 'h-8 w-14', rotation = 90, imageScale = 1 }: F1CarProps) {
+export function F1Car({ team, className = 'h-8 w-8', rotation = 90, imageScale = 1 }: F1CarProps) {
   const image = TEAM_CAR_LIVERIES[team]?.image;
 
   return (

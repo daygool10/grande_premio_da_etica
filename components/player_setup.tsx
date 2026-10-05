@@ -99,7 +99,7 @@ export function PlayerSetup() {
             Equipe F1
             {isLoadingPlayers && <span className="ml-2">Carregando equipes disponíveis...</span>}
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
             {F1_TEAMS.map((team) => {
               const isTaken = takenTeams.has(team);
               return (
@@ -113,7 +113,7 @@ export function PlayerSetup() {
                     }
                   }}
                   disabled={isTaken || isLoadingPlayers || isSubmitting}
-                  className={`p-3 rounded-xl border-2 transition-all flex items-center gap-2 disabled:cursor-not-allowed ${
+                  className={`flex min-w-0 items-center gap-2 rounded-xl border-2 p-3 transition-all disabled:cursor-not-allowed ${
                     isTaken
                       ? 'border-gray-600 bg-gray-800/30 opacity-40 cursor-not-allowed'
                       : selectedTeam === team

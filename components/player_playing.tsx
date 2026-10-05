@@ -21,6 +21,7 @@ export function PlayerPlaying() {
   const announcedQuestion = useRef('');
   const questionStartedAt = useRef(performance.now());
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
 
   useEffect(() => {
     questionStartedAt.current = performance.now();
@@ -83,7 +84,6 @@ export function PlayerPlaying() {
   ]);
 
   const q = currentQuestion;
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
   const isQuestionAdvancing = Boolean(
     game && game.current_question_index > displayQuestionIndex,
   );

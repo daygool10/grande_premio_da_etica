@@ -59,10 +59,10 @@ export function AdminWaiting() {
       <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
       <div className="relative z-10 mx-auto w-full max-w-6xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="inline-block rounded bg-red-600 px-3 py-1 text-base font-bold">F1</span>
-            <h2 className="text-2xl font-bold sm:text-3xl">Sala de Espera</h2>
+            <h2 className="text-xl font-bold sm:text-3xl">Sala de Espera</h2>
           </div>
           <div className="text-base text-gray-300 sm:text-lg">
             Código: <span className="font-mono text-xl font-bold text-red-400 sm:text-2xl">{game?.game_code}</span>

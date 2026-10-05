@@ -54,7 +54,7 @@ export function RaceResults({
                   </span>
                   <F1Car
                     team={player.f1_team}
-                    className={winner ? 'mb-1 h-10 w-16 sm:h-12 sm:w-20' : 'mb-1 h-9 w-14 sm:h-10 sm:w-16'}
+                    className={winner ? 'mb-1 h-11 w-11 sm:h-14 sm:w-14' : 'mb-1 h-9 w-9 sm:h-11 sm:w-11'}
                   />
                   <span className="w-full break-words text-xs font-black leading-tight text-white sm:text-base">
                     {player.team_name}

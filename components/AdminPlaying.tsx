@@ -77,12 +77,12 @@ export function AdminPlaying() {
     <div className="min-h-screen p-4 bg-[#1a1a2e]">
       <div className="mx-auto w-full max-w-[1800px]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="inline-block bg-red-600 px-3 py-1 rounded text-sm font-bold">F1</span>
-            <h2 className="text-xl font-bold">Pergunta {(game?.current_question_index || 0) + 1}/{questionCount}</h2>
+            <h2 className="text-lg font-bold sm:text-xl">Pergunta {(game?.current_question_index || 0) + 1}/{questionCount}</h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
               game?.question_revealed ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
             }`}>
