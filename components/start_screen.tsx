@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../store/GameStore';
+import { assetPath } from '../lib/assetPath';
 
 export function StartScreen() {
   const { createGame, setViewState } = useGameStore();
@@ -28,7 +29,7 @@ export function StartScreen() {
   return (
     <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[#1a1a2e] p-6">
       <img
-        src="/start-grid-background.png"
+        src={assetPath('/start-grid-background.png')}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"

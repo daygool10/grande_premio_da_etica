@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
+import { assetPath } from '../lib/assetPath';
 
 type StartSequence = 'waiting' | 'tire-exit' | 'lights-red' | 'lights-green';
 
@@ -47,7 +48,7 @@ export function PlayerWaiting() {
   return (
     <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden p-4">
       <img
-        src="/waiting-background.png"
+        src={assetPath('/waiting-background.png')}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"

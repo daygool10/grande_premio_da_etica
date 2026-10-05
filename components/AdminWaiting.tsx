@@ -3,6 +3,7 @@ import { useGameStore } from '../store/GameStore';
 import { TEAM_COLORS } from '../data/questions';
 import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
+import { assetPath } from '../lib/assetPath';
 
 export function AdminWaiting() {
   const { game, players, startGame, setViewState, loadGameState, removeOfflinePlayer } = useGameStore();
@@ -50,7 +51,7 @@ export function AdminWaiting() {
   return (
     <div className="relative isolate flex min-h-screen items-center justify-center overflow-x-hidden bg-[#1a1a2e] p-4">
       <img
-        src="/waiting-background.png"
+        src={assetPath('/waiting-background.png')}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"

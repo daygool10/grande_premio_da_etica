@@ -4,6 +4,7 @@ import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
 import { getBoardSize, questions, TEAM_COLORS } from '../data/questions';
 import { getEngineerMessage } from '../lib/engineerMessages';
+import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
 
 export function PlayerPlaying() {
@@ -143,7 +144,7 @@ export function PlayerPlaying() {
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-[#1a1a2e] p-4">
       <img
-        src="/player-question-background.png"
+        src={assetPath('/player-question-background.png')}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
