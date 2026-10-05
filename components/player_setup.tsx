@@ -25,7 +25,7 @@ export function PlayerSetup() {
 
   const handleSetup = async () => {
     if (!teamName.trim()) {
-      setError('Digite o nome da sua dupla!');
+      setError('Digite o nome da sua equipe!');
       return;
     }
     if (!selectedTeam) {
@@ -78,10 +78,10 @@ export function PlayerSetup() {
         </div>
         
         <h2 className="text-3xl font-bold mb-2 text-center">Configurar Equipe</h2>
-        <p className="text-gray-300 text-lg mb-6 text-center">Escolha o nome da dupla e sua equipe F1</p>
+        <p className="text-gray-300 text-lg mb-6 text-center">Escolha o nome da equipe e sua equipe F1</p>
 
         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
-          <label className="text-gray-300 text-base mb-2 block">Nome da Dupla</label>
+          <label className="text-gray-300 text-base mb-2 block">Nome da Equipe</label>
           <input
             type="text"
             value={teamName}
@@ -89,7 +89,7 @@ export function PlayerSetup() {
               setTeamName(e.target.value);
               setError('');
             }}
-            placeholder="Nome dos jogadores"
+            placeholder="Nome da sua equipe"
             className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-lg text-white focus:outline-none focus:border-red-500"
           />
         </div>

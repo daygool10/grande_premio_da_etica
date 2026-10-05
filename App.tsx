@@ -72,7 +72,7 @@ export default function App() {
           </p>
           <p className="mt-4 text-sm text-gray-400">
             {canChangeIdentity
-              ? 'Retome sua dupla exatamente de onde parou ou remova-a da grade para configurar uma nova enquanto a sala aguarda a largada. Se a corrida começar antes da nova configuração, a sala recusará a entrada.'
+              ? 'Retome sua equipe exatamente de onde parou ou remova-a da grade para configurar uma nova enquanto a sala aguarda a largada. Se a corrida começar antes da nova configuração, a sala recusará a entrada.'
               : 'A corrida já começou. Para preservar o andamento e a posição da equipe, só é possível retomar esta identidade.'}
           </p>
           {recoveryError && <p role="alert" className="mt-4 text-sm text-red-300">{recoveryError}</p>}

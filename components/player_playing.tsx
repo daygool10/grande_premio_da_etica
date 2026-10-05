@@ -20,6 +20,7 @@ export function PlayerPlaying() {
   const lastEngineerMessage = useRef('');
   const announcedQuestion = useRef('');
   const questionStartedAt = useRef(performance.now());
+  const radioAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     questionStartedAt.current = performance.now();
@@ -109,6 +110,15 @@ export function PlayerPlaying() {
     });
     lastEngineerMessage.current = text;
     setEngineerMessage(text);
+
+    const radioAudio = radioAudioRef.current;
+    if (radioAudio) {
+      radioAudio.currentTime = 0;
+      radioAudio.volume = 0.6;
+      void radioAudio.play().catch(() => {
+        // Navegadores podem bloquear áudio antes da primeira interação do usuário.
+      });
+    }
   }, [
     answers,
     boardSize,
@@ -150,6 +160,7 @@ export function PlayerPlaying() {
         className="absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-90 blur-sm"
       />
       <div className="absolute inset-0 -z-10 bg-[#101322]/75" />
+      <audio ref={radioAudioRef} src={assetPath('/radio-message.mp3')} preload="auto" />
       <AnimatePresence>
         {engineerMessage && (
           <motion.aside
