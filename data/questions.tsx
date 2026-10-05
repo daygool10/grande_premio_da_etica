@@ -35,11 +35,11 @@ export const questions: Question[] = [
   {
     id: 2,
     title: 'Crashgate - Acidente Forçado em Singapura (2008)',
-    scenario: 'No GP de Singapura de 2008, Nelson Piquet Jr., piloto da Renault, bateu deliberadamente na curva 17 a mando dos diretores Flávio Briatore e Pat Symonds. O acidente trouxe o safety car, permitindo que Fernando Alonso, que havia feito pit stop na volta anterior, assumisse a liderança e vencesse. Piquet Jr. só revelou a conspiração um ano depois, após ser dispensado pela Renault. Briatore recebeu banimento vitalício e Symonds foi banido por 5 anos.',
+    scenario: 'No GP de Singapura de 2008, Nelson Piquet Jr., piloto da Renault, bateu deliberadamente na curva 17 a mando dos diretores Flávio Briatore e Pat Symonds. O acidente trouxe o safety car, permitindo que Fernando Alonso, que havia feito pit stop na volta anterior, assumisse a liderança e vencesse. Piquet Jr. revelou a conspiração em 2009, após ser dispensado pela Renault. A FIA baniu Briatore em definitivo e suspendeu Symonds por 5 anos, mas a justiça francesa anulou essas punições individuais em 2010. A Renault recebeu banimento de dois anos com pena suspensa, ou seja, não cumpriu a punição.',
     options: [
-      { text: 'A Renault deveria ser desclassificada de toda a temporada, mas os banimentos individuais foram suficientes', isCorrect: false },
+      { text: 'A Renault não teve responsabilidade direta, pois os diretores agiram por conta própria sem o conhecimento da equipe', isCorrect: false },
       { text: 'O caso deveria ter sido arquivado, pois Piquet Jr. só denunciou por vingança após ser dispensado', isCorrect: false },
-      { text: 'Manipular o resultado de uma corrida é a forma mais grave de trapaça, e os responsáveis devem ser banidos permanentemente', isCorrect: true },
+      { text: 'Manipular o resultado de uma corrida é a forma mais grave de trapaça, e os responsáveis deveriam ter sido punidos de forma definitiva', isCorrect: true },
       { text: 'Alonso não sabia do plano, então não deveria perder sua vitória, pois foi um piloto inocente', isCorrect: false },
     ],
   },
@@ -136,8 +136,8 @@ export const questions: Question[] = [
     title: 'Hamilton vs Rosberg - Colisão na Espanha (2016)',
     scenario: 'No GP da Espanha de 2016, Lewis Hamilton e Nico Rosberg, companheiros de equipe da Mercedes, colidiram na primeira curva na primeira volta. Ambos abandonaram. A investigação da Mercedes revelou que Rosberg havia acionado um botão de configuração errado, perdendo potência, e Hamilton tentou ultrapassar pelo lado interno. A colisão eliminou ambos e foi o primeiro de vários confrontos físicos entre os dois na temporada.',
     options: [
-      { text: 'A FIA deveria ter punido ambos os pilotos por condução perigosa, não apenas a Mercedes internamente', isCorrect: false },
-      { text: 'A Mercedes deveria ter aplicado sanções internas severas para evitar repetição de confrontos', isCorrect: true },
+      { text: 'Os comissários acertaram ao não punir: a colisão foi causada por falha técnica (botão errado de Rosberg), não por má conduta', isCorrect: true },
+      { text: 'A Mercedes deveria ter aplicado sanções internas severas para evitar repetição de confrontos', isCorrect: false },
       { text: 'O acidente foi apenas uma consequência natural da disputa entre dois campeões igualmente talentosos', isCorrect: false },
       { text: 'Hamilton deveria ter esperado, pois sabia que Rosberg estava em desvantagem técnica', isCorrect: false },
     ],
@@ -145,11 +145,11 @@ export const questions: Question[] = [
   {
     id: 12,
     title: 'Hamilton vs Rosberg - Colisão na Áustria (2016)',
-    scenario: 'No GP da Áustria de 2016, Hamilton e Rosberg colidiram na última curva da última volta. Hamilton, que liderava, fechou a porta para Rosberg, que tentou ultrapassar. Rosberg perdeu a frente do carro e Hamilton venceu com o sidepod danificado. A Mercedes culpou ambos os pilotos pela situação, mas não aplicou punições externas.',
+    scenario: 'No GP da Áustria de 2016, Hamilton e Rosberg colidiram na última curva da última volta. Hamilton, que liderava, fechou a porta para Rosberg, que tentou ultrapassar. Rosberg perdeu a frente do carro e Hamilton venceu com o sidepod danificado. Os comissários da FIA consideraram Rosberg culpado pelo incidente e lhe aplicaram uma penalidade de 10 segundos, mas ele terminou em quarto e Hamilton venceu. A Mercedes, internamente, culpou ambos os pilotos pela situação.',
     options: [
       { text: 'Hamilton fechou deliberadamente a porta e deveria ter recebido penalidade de tempo', isCorrect: false },
       { text: 'Rosberg tentou uma ultrapassagem arriscada e deveria ter aceitado o segundo lugar', isCorrect: false },
-      { text: 'A colisão foi resultado da pressão da equipe e a Mercedes compartilha a responsabilidade', isCorrect: true },
+      { text: 'Rosberg foi penalizado pelos comissários por causar a colisão, e a punição de 10 segundos foi justa', isCorrect: true },
       { text: 'Nenhum piloto deveria ser punido, pois disputas na última volta fazem parte da essência da F1', isCorrect: false },
     ],
   },
@@ -225,8 +225,8 @@ export const questions: Question[] = [
     scenario: 'No GP da Inglaterra de 1994, Schumacher recebeu uma bandeira preta por ter ultrapassado Damon Hill na volta de formação, mas ignorou a sinalização por várias voltas. A FIA o desclassificou da corrida e depois o suspendeu por duas corridas, além de multa. O caso demonstrou a disposição de Schumacher de ignorar regras em busca do título.',
     options: [
       { text: 'Schumacher não viu a bandeira, pois a comunicação entre pista e piloto era deficiente na época', isCorrect: false },
-      { text: 'Ignorar uma bandeira preta é a ofensa mais grave possível: Schumacher deveria ter sido desclassificado do campeonato', isCorrect: true },
-      { text: 'A suspensão de duas corridas foi suficiente como punição exemplar', isCorrect: false },
+      { text: 'Ignorar uma bandeira preta é gravíssimo, e a suspensão de duas corridas foi uma punição adequada', isCorrect: true },
+      { text: 'Schumacher deveria ter sido apenas multado, pois não houve acidente nem feridos na pista', isCorrect: false },
       { text: 'A equipe Benetton deveria ter responsabilidade por não ordenar que o piloto parasse', isCorrect: false },
     ],
   },
@@ -331,13 +331,13 @@ export const questions: Question[] = [
   },
   {
     id: 29,
-    title: 'Prost - Acordo Informal entre Prost e Senna (1991)',
-    scenario: 'No GP do Brasil de 1991, Alain Prost (Ferrari) e Ayrton Senna (Williams) chegaram a um acordo informal para manter as posições, evitando disputa arriscada. Prost liderou a corrida inteira sem pressão, e Senna manteve o segundo lugar. Torcedores brasileiros vaiaram o resultado, e a FIA investigou mas não encontrou evidências formais de combinação.',
+    title: 'Acordo de Cavalheiros Quebrado - San Marino (1989)',
+    scenario: 'No GP de San Marino de 1989, Ayrton Senna e Alain Prost, companheiros de equipe na McLaren, tinham um acordo de não-agressão na primeira volta. A corrida foi interrompida por um acidente grave de Gerhard Berger e, na relargada, Prost largou melhor, assumindo a liderança. Senna, porém, o ultrapassou na primeira curva, quebrando o acordo. Senna alegou que o pacto valia apenas para a largada original, não para a relargada. Prost sentiu-se traído, e a relação entre os dois azedou definitivamente, culminando nos acidentes de Suzuka em 1989 e 1990.',
     options: [
-      { text: 'Os pilotos tinham direito de proteger seus carros e resultados, pois o campeonato é longo', isCorrect: false },
-      { text: 'Sem evidências formais, a FIA não poderia punir nenhum dos pilotos', isCorrect: false },
-      { text: 'A torcida deveria respeitar as decisões estratégicas dos pilotos, mesmo quando não são populares', isCorrect: false },
-      { text: 'Acordos informais entre rivais são trapaça e deveriam ser punidos pela FIA', isCorrect: true },
+      { text: 'Senna tinha razão: a relargada criou uma nova situação de corrida, liberando os pilotos para disputar posição', isCorrect: false },
+      { text: 'A FIA deveria ter intervindo e punido Senna por quebrar um acordo interno da equipe', isCorrect: false },
+      { text: 'Prost superestimou o acordo: pilotos de corrida sempre devem buscar a vitória, independentemente de pactos', isCorrect: false },
+      { text: 'Senna quebrou um acordo que ele mesmo propôs, e a confiança entre companheiros de equipe é essencial para o esporte', isCorrect: true },
     ],
   },
   {

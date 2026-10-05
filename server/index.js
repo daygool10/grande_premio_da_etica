@@ -7,8 +7,8 @@ const { Pool } = pg;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   host: process.env.PGHOST || 'localhost',
-  port: Number(process.env.PGPORT || 5432),
-  user: process.env.PGUSER || 'postgres',
+  port: Number(process.env.PGPORT || 5433),
+  user: process.env.PGUSER || 'daya',
   password: process.env.PGPASSWORD || '1234',
   database: process.env.PGDATABASE || 'etica_f1',
   ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
@@ -450,7 +450,7 @@ app.get('/health', async (req, res) => {
 // Start server
 // ============================================
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 async function startServer() {
   await pool.query('ALTER TABLE answers ADD COLUMN IF NOT EXISTS response_time_ms integer');
