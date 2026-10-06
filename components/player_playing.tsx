@@ -4,7 +4,7 @@ import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
 import { boardScale } from '../data/questions';
 import { TEAM_COLORS } from '../lib/teams';
-import { getEngineerMessage } from '../lib/engineerMessages';
+import { getEngineerMessage, type EngineerAnswer } from '../lib/engineerMessages';
 import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
 
@@ -94,10 +94,21 @@ export function PlayerPlaying() {
     if (announcedQuestion.current === announcementKey) return;
     announcedQuestion.current = announcementKey;
 
+    // O servidor mascara is_correct até a revelação; revealedAnswers é o snapshot capturado
+    // quando a pergunta estava revelada, então dele vem o veredito REAL — nunca inventado aqui.
+    const engineerAnswers: EngineerAnswer[] = revealedAnswers.map((answer) => ({
+      player_id: answer.player_id,
+      question_index: answer.question_index,
+      selected_option: answer.selected_option,
+      is_correct: answer.is_correct === true,
+      response_time_ms: answer.response_time_ms,
+      created_at: answer.created_at,
+    }));
+
     const { text } = getEngineerMessage({
       player: currentPlayer,
       players,
-      answers: revealedAnswers,
+      answers: engineerAnswers,
       questionIndex: displayQuestionIndex,
       boardSize,
       previousMessage: lastEngineerMessage.current,
@@ -142,9 +153,8 @@ export function PlayerPlaying() {
   const currentAnswer = currentPlayer && answers.find(
     (answer) => answer.player_id === currentPlayer.id && answer.question_index === game?.current_question_index,
   );
-  const correctnessField = globalThis.String.fromCharCode(105, 115, 95, 99, 111, 114, 114, 101, 99, 116) as 'is_correct';
   const resultMessage = selectedAnswer
-    ? currentAnswer?.[correctnessField]
+    ? currentAnswer?.is_correct
       ? '✅ Resposta correta! Avanço definido pelo tempo de resposta.'
       : '❌ Resposta incorreta. Continue tentando na próxima rodada!'
     : '';
@@ -273,7 +283,7 @@ export function PlayerPlaying() {
         {/* Result Message - only after admin reveals */}
         {game?.question_revealed && hasAnswered && (
           <div className={`mt-4 p-4 rounded-xl text-center font-bold text-lg ${
-            currentAnswer?.[correctnessField]
+            currentAnswer?.is_correct
               ? 'bg-green-900/50 text-green-400 border border-green-700'
               : 'bg-red-900/50 text-red-400 border border-red-700'
           }`}>
