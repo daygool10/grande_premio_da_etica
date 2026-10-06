@@ -12,6 +12,8 @@ interface CircuitBoardPlayer {
 interface CircuitBoardProps {
   players: CircuitBoardPlayer[];
   boardSize: number;
+  // Modo compacto (mobile-first) usado na tela do jogador; o padrão preserva o tabuleiro do admin.
+  compact?: boolean;
 }
 
 interface TrackPosition {
@@ -198,6 +200,7 @@ function TrackCar({
   return (
     <motion.div
       className="absolute z-30"
+      data-car={player.id}
       style={{ left, top }}
       title={`${player.team_name} — ${player.f1_team}, casa ${position}`}
       aria-label={`${player.team_name}, ${player.f1_team}, casa ${position}`}
@@ -219,7 +222,7 @@ function TrackCar({
   );
 }
 
-export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
+export function CircuitBoard({ players, boardSize, compact = false }: CircuitBoardProps) {
   const animationTrack = useMemo(
     () => getTrackPositions(boardSize * TRACK_ANIMATION_STEPS),
     [boardSize],
@@ -234,7 +237,7 @@ export function CircuitBoard({ players, boardSize }: CircuitBoardProps) {
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
-      <div className="relative isolate aspect-[5/2] min-w-[560px] overflow-hidden bg-[#10251f] sm:min-w-[720px]">
+      <div className={`relative isolate aspect-[5/2] overflow-hidden bg-[#10251f] ${compact ? 'min-w-0' : 'min-w-[560px] sm:min-w-[720px]'}`}>
         <svg
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"

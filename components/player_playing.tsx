@@ -7,6 +7,7 @@ import { TEAM_COLORS } from '../lib/teams';
 import { getEngineerMessage, type EngineerAnswer } from '../lib/engineerMessages';
 import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
+import { CircuitBoard } from './CircuitBoard';
 
 export function PlayerPlaying() {
   const { 
@@ -215,6 +216,21 @@ export function PlayerPlaying() {
             <p className="text-xs text-gray-500">Posição: {currentPlayer.position}/{boardSize}</p>
           </div>
         </div>
+
+        {/* Circuito da dupla: so o carro dela, andando conforme o servidor move a posicao */}
+        <section
+          data-testid="player-circuit"
+          className="mb-4 rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-4"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-lg" aria-hidden="true">🏁</span>
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">Meu circuito</h3>
+            <span className="ml-auto text-xs text-gray-400">
+              Casa {currentPlayer.position}/{boardSize}
+            </span>
+          </div>
+          <CircuitBoard players={[currentPlayer]} boardSize={boardSize} compact />
+        </section>
 
         {/* Question */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-5 mb-4">
