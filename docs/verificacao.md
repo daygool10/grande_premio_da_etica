@@ -38,3 +38,21 @@ emuladas de 390x844 e 360x740 o carro continuou dentro da tela, sem rolagem hori
 O heartbeat do jogador atualiza `players.last_seen` a cada 20 s, e essa linha esta publicada no Realtime.
 Cada heartbeat portanto entrega um evento para a propria dupla, que recarrega o estado. Nao e um poll, mas
 explica recargas periodicas de 20 s na tela do jogador mesmo com o Realtime saudavel.
+
+## Fluxos de sala (W5)
+
+Jogo L8PLAC, dois clientes isolados, sala em `waiting`, grade de 20 vagas.
+
+- Baseline: 2/20 ocupadas, 18 "Vaga disponivel", banco com 2 duplas e 1 sessao privada cada.
+- Troca de identidade ("Voltar com outro nome/equipe"): recarregar a pagina do jogador levanta a tela
+  "Partida anterior encontrada". O botao chama `leave_waiting_player`, que apaga a dupla e a sessao dela
+  (confirmado no banco: zero sessoes privadas orfas) e devolve o jogador para a configuracao. Ele entrou de
+  novo com outra dupla e outra equipe, e a grade voltou a 2/20 com os nomes novos.
+- Remocao de dupla offline: com `last_seen` 5 minutos atras, o admin passou a mostrar "Desconectada" e o
+  botao "Remover Dupla Gamma da grade" apareceu em cerca de 1 s, pelo evento de Realtime do UPDATE. O clique
+  levou a grade de 2/20 para 1/20 e o banco ficou com uma dupla.
+- Controle do portao de 90 segundos: chamando `remove_offline_player` com o token de admin real e a dupla
+  ONLINE, a funcao devolveu `false` e a dupla continuou na sala. Com a mesma dupla marcada como inativa, a
+  mesma chamada devolveu `true` e removeu a dupla. O portao pode falhar e falha.
+- A dupla removida percebeu no heartbeat seguinte: a sessao local foi limpa e a tela voltou para
+  "Entrar na partida".
