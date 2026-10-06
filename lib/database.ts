@@ -231,9 +231,10 @@ export const database = {
     }
   },
 
-  async updateGame(id: string, updates: Partial<Game>): Promise<Game> {
+  async updateGame(id: string, adminToken: string, updates: Partial<Game>): Promise<Game> {
     const data = await rpc<Game | null>('rpc_update_game', {
       p_game_id: id,
+      p_admin_session_token: adminToken,
       p_phase: updates.phase ?? null,
       p_current_question_index: updates.current_question_index ?? null,
       p_question_revealed:
@@ -337,9 +338,14 @@ export const database = {
     return data ?? [];
   },
 
-  async getAnswerKey(gameId: string, questionIndex: number): Promise<{ option_index: number }> {
+  async getAnswerKey(
+    gameId: string,
+    adminToken: string,
+    questionIndex: number,
+  ): Promise<{ option_index: number }> {
     return rpc<{ option_index: number }>('rpc_get_answer_key', {
       p_game_id: gameId,
+      p_admin_session_token: adminToken,
       p_question_index: questionIndex,
     });
   },

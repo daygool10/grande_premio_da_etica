@@ -124,9 +124,14 @@ BEGIN
 END;
 $$;
 
--- Libera o gabarito somente depois da revelacao.
+-- Libera o gabarito somente depois da revelacao, E somente para o admin da partida: olhar so
+-- a flag question_revealed permitia forcar a revelacao por rpc_update_game e ler a chave.
+-- A assinatura antiga e removida de proposito.
+DROP FUNCTION IF EXISTS public.rpc_get_answer_key(uuid, integer);
+
 CREATE OR REPLACE FUNCTION public.rpc_get_answer_key(
   p_game_id uuid,
+  p_admin_session_token text,
   p_question_index integer
 )
 RETURNS jsonb
@@ -145,6 +150,10 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Game not found';
+  END IF;
+
+  IF NOT public.admin_session_valid(p_game_id, p_admin_session_token) THEN
+    RAISE EXCEPTION 'Invalid or missing admin session token';
   END IF;
 
   IF NOT l_game.question_revealed THEN
@@ -227,6 +236,23 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.rpc_reveal(uuid, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.rpc_get_answer_key(uuid, integer) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answer_key(uuid, text, integer) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game_and_question(uuid, integer) TO anon, authenticated;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- Funcoes desta migracao:
+REVOKE ALL ON FUNCTION public.rpc_reveal(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_reveal(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_answer_key(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answer_key(uuid, text, integer) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_answers_by_game(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_answers_by_game_and_question(uuid, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game_and_question(uuid, integer) TO anon, authenticated;

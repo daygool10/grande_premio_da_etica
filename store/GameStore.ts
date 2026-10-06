@@ -646,7 +646,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           })()
         : null,
     });
-    const key = await database.getAnswerKey(game.id, result.question_index);
+    const key = await database.getAnswerKey(game.id, adminToken, result.question_index);
     set({ answerKey: key.option_index });
   },
 
@@ -656,7 +656,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const nextIndex = game.current_question_index + 1;
 
-    const updatedGame = await database.updateGame(game.id, {
+    // A partida agora so muda com o token do admin (a funcao no banco exige).
+    const adminToken = readAdminToken(game.id);
+    if (!adminToken) throw new Error('Admin session is missing.');
+
+    const updatedGame = await database.updateGame(game.id, adminToken, {
       current_question_index: nextIndex,
       question_revealed: false,
       phase: nextIndex >= get().dealtQuestions.length ? 'finished' : 'question',
@@ -677,7 +681,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return;
 
-    const startedGame = await database.updateGame(game.id, { phase: 'question' });
+    const adminToken = readAdminToken(game.id);
+    if (!adminToken) throw new Error('Admin session is missing.');
+
+    const startedGame = await database.updateGame(game.id, adminToken, { phase: 'question' });
     set({ game: startedGame });
   },
 

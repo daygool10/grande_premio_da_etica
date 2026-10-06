@@ -31,8 +31,15 @@ ALTER TABLE public.question_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.games ADD COLUMN IF NOT EXISTS question_shown_at timestamptz;
 
 -- Atualiza campos permitidos da partida. Campos NULL são ignorados.
+-- EXIGE o token do admin: sem essa checagem qualquer pessoa com a chave anon (que é publica e
+-- vai no bundle) revelava uma pergunta por aqui e em seguida lia o gabarito em
+-- rpc_get_answer_key, que so olha a flag question_revealed. A assinatura antiga e removida
+-- de proposito, para nao sobrar uma sobrecarga sem checagem.
+DROP FUNCTION IF EXISTS public.rpc_update_game(uuid, text, integer, boolean);
+
 CREATE OR REPLACE FUNCTION public.rpc_update_game(
   p_game_id uuid,
+  p_admin_session_token text,
   p_phase text DEFAULT NULL,
   p_current_question_index integer DEFAULT NULL,
   p_question_revealed boolean DEFAULT NULL
@@ -45,6 +52,10 @@ AS $$
 DECLARE
   updated_game public.games;
 BEGIN
+  IF NOT public.admin_session_valid(p_game_id, p_admin_session_token) THEN
+    RAISE EXCEPTION 'Invalid or missing admin session token';
+  END IF;
+
   UPDATE public.games
   SET
     phase = COALESCE(p_phase, phase),
@@ -142,6 +153,25 @@ BEGIN
     RAISE EXCEPTION 'Game not found';
   END IF;
 
+  -- A dupla tem de ser desta partida. Sem isto da para gravar resposta no lugar da dupla de
+  -- outra partida, e o indice unico (migracao 05) passa a devolver 409 para a dupla de verdade.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.players AS player
+    WHERE player.id = p_player_id AND player.game_id = p_game_id
+  ) THEN
+    RAISE EXCEPTION 'Player does not belong to this game';
+  END IF;
+
+  -- So aceita resposta durante a pergunta e antes da revelacao: depois do reveal ela entraria
+  -- na classificacao, que e calculada a partir das respostas.
+  IF found_game.phase IS DISTINCT FROM 'question' THEN
+    RAISE EXCEPTION 'Game is not taking answers (phase %)', found_game.phase;
+  END IF;
+
+  IF found_game.question_revealed THEN
+    RAISE EXCEPTION 'Question already revealed';
+  END IF;
+
   l_question_id := found_game.question_order[p_question_index + 1];
   IF l_question_id IS NULL THEN
     RAISE EXCEPTION 'Question not found for index %', p_question_index;
@@ -153,6 +183,13 @@ BEGIN
 
   IF l_correct_option IS NULL THEN
     RAISE EXCEPTION 'No answer key for question %', l_question_id;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.question_options AS option
+    WHERE option.question_id = l_question_id AND option.option_index = p_selected_option
+  ) THEN
+    RAISE EXCEPTION 'Option % does not exist for question %', p_selected_option, l_question_id;
   END IF;
 
   l_answer_is_correct := p_selected_option = l_correct_option;
@@ -177,3 +214,72 @@ $$;
 -- Permissões RPC para anon/authenticated
 GRANT EXECUTE ON FUNCTION public.rpc_get_dealt_questions(uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_create_answer(uuid, uuid, integer, integer) TO anon, authenticated;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- As tres funcoes que este arquivo define:
+REVOKE ALL ON FUNCTION public.rpc_update_game(uuid, text, text, integer, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_update_game(uuid, text, text, integer, boolean) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_dealt_questions(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_dealt_questions(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_create_answer(uuid, uuid, integer, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_create_answer(uuid, uuid, integer, integer) TO anon, authenticated;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- As que ja existiam no init.sql e o cliente novo ainda usa:
+REVOKE ALL ON FUNCTION public.admin_session_valid(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_session_valid(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.leave_waiting_player(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.leave_waiting_player(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.player_heartbeat(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_heartbeat(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.remove_offline_player(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.remove_offline_player(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_create_game(text, text, text, integer[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_create_game(text, text, text, integer[]) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_create_player(uuid, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_create_player(uuid, text, text, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_answers_by_game(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_answers_by_game_and_question(uuid, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_answers_by_game_and_question(uuid, integer) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_game_by_code(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_game_by_code(text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_game_by_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_game_by_id(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_game_state(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_game_state(uuid, uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_player_by_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_player_by_id(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_player_by_id_and_game(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_player_by_id_and_game(uuid, uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_get_players_by_game(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_get_players_by_game(uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.capture_admin_session_token() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.capture_player_session_token() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.require_waiting_game_for_player() FROM PUBLIC, anon, authenticated;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- Estas duas escreviam sem checar nada e o cliente novo NAO chama nenhuma delas (a posicao agora
+-- vem do rpc_reveal). Perdem o EXECUTE de PUBLIC, anon e authenticated: antes, qualquer um com a
+-- chave publica podia mudar a posicao de qualquer dupla ou reescrever o placar inteiro.
+-- service_role mantem, para ferramenta de admin que venha a existir.
+REVOKE ALL ON FUNCTION public.rpc_update_player(uuid, integer, boolean, timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_batch_update_players(jsonb) FROM PUBLIC, anon, authenticated;

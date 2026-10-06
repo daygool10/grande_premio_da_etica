@@ -219,3 +219,18 @@ GRANT EXECUTE ON FUNCTION public.rpc_author_list_questions(uuid, text) TO anon, 
 GRANT EXECUTE ON FUNCTION public.rpc_author_save_question(uuid, text, integer, text, text, jsonb)
   TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_author_delete_question(uuid, text, integer) TO anon, authenticated;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- Funcoes desta migracao:
+REVOKE ALL ON FUNCTION public.rpc_author_list_questions(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_author_list_questions(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_author_save_question(uuid, text, integer, text, text, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_author_save_question(uuid, text, integer, text, text, jsonb) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.rpc_author_delete_question(uuid, text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_author_delete_question(uuid, text, integer) TO anon, authenticated;

@@ -39,3 +39,14 @@ BEGIN
   RETURN to_jsonb(l_new_game) - 'admin_session_token';
 END;
 $$;
+
+-- ============================================================
+-- Permissoes
+-- No Postgres toda funcao nasce executavel por PUBLIC ("=X/postgres" na ACL), entao um GRANT
+-- explicito NAO restringe nada. Revogamos de PUBLIC e concedemos so a quem chama de verdade.
+-- Nao use DO/EXCEPTION aqui: se uma funcao abaixo nao existir, o erro e o sinal de que o
+-- supabase/init.sql (que as cria) nao foi aplicado antes.
+-- ============================================================
+-- Funcao desta migracao:
+REVOKE ALL ON FUNCTION public.rpc_create_game(text, text, text, integer[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_create_game(text, text, text, integer[]) TO anon, authenticated;
