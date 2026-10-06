@@ -1,6 +1,6 @@
 import { database } from '../lib/database';
-import { questions, getQuestionAt } from '../data/questions';
-import { finishLineForOrder, scoreReveal } from '../server/shared/scoring.js';
+import { questions } from '../data/questions';
+import { finishLineForOrder } from '../server/shared/scoring.js';
 import type { GameStore, GameStoreSet, GameStoreGet } from './gameTypes';
 
 export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<GameStore, 'revealAnswer' | 'nextQuestion'> {
@@ -9,39 +9,12 @@ export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
     const { game } = get();
     if (!game || game.question_revealed) return;
 
-    const question = getQuestionAt(game.current_question_index, game.question_order);
-    if (!question) {
-      throw new Error(`Question ${game.current_question_index} was not found.`);
-    }
-
-    const finishLine = finishLineForOrder(game.question_order, questions);
-
-    const [gamePlayers, questionAnswers] = await Promise.all([
-      database.getPlayersByGame(game.id),
-      database.getAnswersByGameAndQuestion(game.id, game.current_question_index),
-    ]);
-
-    if (!gamePlayers?.length) {
-      throw new Error('Cannot reveal an answer without players in this game.');
-    }
-
-    const answersByPlayer = new Map(questionAnswers?.map((answer) => [answer.player_id, answer]));
-    const eligiblePlayers = gamePlayers.filter(
-      (player) => !player.skipped_turn && player.position < finishLine,
-    );
-    if (eligiblePlayers.some((player) => !answersByPlayer.has(player.id))) {
-      throw new Error('Cannot reveal an answer until every player has submitted one.');
-    }
-
-    const playerUpdates = scoreReveal(
-      question.options,
-      gamePlayers,
-      questionAnswers ?? [],
-      game.current_question_index,
-    );
-
-    await database.batchUpdatePlayers(playerUpdates);
-    await database.updateGame(game.id, { question_revealed: true });
+    // O fechamento da rodada agora é do servidor:
+    // POST /games/:id/reveal valida o admin, tranca a
+    // partida, confere as respostas e grava as posições
+    // numa transação. O cliente só exibe o resultado.
+    const result = await database.revealQuestion(game.id);
+    set({ lastReveal: result });
     await get().loadGameState();
   },
 
@@ -75,7 +48,7 @@ export function createPlayActions(set: GameStoreSet, get: GameStoreGet): Pick<Ga
         position: playersToCheck.find(p => p.id === id)?.position ?? 0,
         skipped_turn: false,
       }));
-      await database.batchUpdatePlayers(unskipUpdates);
+      await database.batchUpdatePlayers(game.id, unskipUpdates);
     }
 
     const currentPlayer = get().currentPlayer;

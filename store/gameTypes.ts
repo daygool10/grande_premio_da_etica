@@ -32,6 +32,24 @@ export interface Answer {
 }
 
 export type ViewState = 'start' | 'admin_game_code' | 'admin_waiting' | 'admin_playing' | 'admin_finished' | 'player_join' | 'player_setup' | 'player_waiting' | 'player_playing' | 'player_finished' | 'player_penalty';
+
+export interface RevealResultRow {
+  player_id: string;
+  team_name: string;
+  has_answer: boolean;
+  selected_option: number | null;
+  correct: boolean;
+  speed_rank: number;
+  delta: number;
+  total_before: number;
+  total_after: number;
+}
+
+export interface RevealResult {
+  question_index: number;
+  finish_line: number;
+  results: RevealResultRow[];
+}
 type SetupPlayerResult =
   | 'success'
   | 'team_taken'
@@ -76,6 +94,7 @@ export interface GameStore {
   isPenalty: boolean;
   penaltyMessage: string;
   finishedPlayers: Player[];
+  lastReveal: RevealResult | null;
   recoveryCandidate: PlayerSession | null;
   isCheckingRecovery: boolean;
   recoveryError: string;

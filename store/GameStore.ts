@@ -22,6 +22,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isPenalty: false,
   penaltyMessage: '',
   finishedPlayers: [],
+  lastReveal: null,
   recoveryCandidate: null,
   isCheckingRecovery: false,
   recoveryError: '',

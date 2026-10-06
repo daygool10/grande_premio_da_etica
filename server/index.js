@@ -4,6 +4,14 @@ import pg from 'pg';
 
 import { registerEvents } from './events.js';
 import { registerQuestions, dealQuestionOrder } from './questions.js';
+import { registerReveal } from './reveal.js';
+import {
+  sessionTokenFrom,
+  isPlayerOwner,
+  isGameAdmin,
+  isGameAdminOfPlayer,
+  isGameAdminOfPlayers,
+} from './auth.js';
 
 const { Pool } = pg;
 
@@ -116,8 +124,14 @@ app.get('/games/:id', async (req, res) => {
 // Atualizar partida
 app.patch('/games/:id', async (req, res) => {
   try {
-    const { phase, current_question_index, question_revealed } = req.body;
     const gameId = req.params.id;
+
+    const token = sessionTokenFrom(req);
+    if (!token || !(await isGameAdmin(pool, gameId, token))) {
+      return res.status(401).json({ error: 'Invalid or missing session token' });
+    }
+
+    const { phase, current_question_index, question_revealed } = req.body;
 
     // Construir query dinâmica baseada nos campos fornecidos
     const updates = [];
@@ -247,6 +261,14 @@ app.patch('/players/:id', async (req, res) => {
     const { position, skipped_turn, is_connected, last_seen } = req.body;
     const playerId = req.params.id;
 
+    // O próprio jogador ou o admin da partida dele.
+    const token = sessionTokenFrom(req);
+    const isOwner = token && (await isPlayerOwner(pool, playerId, token));
+    const isTeamAdmin = token && (await isGameAdminOfPlayer(pool, playerId, token));
+    if (!isOwner && !isTeamAdmin) {
+      return res.status(401).json({ error: 'Invalid or missing session token' });
+    }
+
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -297,6 +319,14 @@ app.post('/players/batch-update', async (req, res) => {
 
     if (!Array.isArray(updates) || updates.length === 0) {
       return res.status(400).json({ error: 'Invalid updates array' });
+    }
+
+    // Só o admin da partida que contém todos os jogadores.
+    const token = sessionTokenFrom(req);
+    const authorizedGameId =
+      token !== null ? await isGameAdminOfPlayers(pool, updates.map((update) => update.id), token) : null;
+    if (authorizedGameId === null) {
+      return res.status(401).json({ error: 'Invalid or missing session token' });
     }
 
     const client = await pool.connect();
@@ -505,6 +535,7 @@ const PORT = process.env.PORT || 3001;
 
 registerEvents(app);
 registerQuestions(app, pool);
+registerReveal(app, pool);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

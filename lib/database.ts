@@ -1,5 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
+import { ADMIN_ID_PREFIX, PLAYER_SESSION_KEY } from '../store/gameTypes';
+import type { RevealResult } from '../store/gameTypes';
+
 interface ApiError extends Error {
   code?: string;
 }
@@ -22,6 +25,57 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 
   return response.json();
+}
+
+// ============================================
+// Tokens de sessão
+// O servidor passou a exigir autenticação nas rotas
+// de escrita: o admin no localStorage sob
+// ADMIN_ID_PREFIX + gameId e o jogador dentro do
+// JSON de PLAYER_SESSION_KEY (campo sessionToken).
+// Ambos os helpers toleram storage ausente e JSON
+// malformado devolvendo null.
+// ============================================
+
+function adminTokenForGame(gameId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const token = window.localStorage.getItem(`${ADMIN_ID_PREFIX}${gameId}`);
+    return typeof token === 'string' && token.length > 0 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+interface StoredPlayerSession {
+  gameId?: string;
+  sessionToken?: string;
+}
+
+function readPlayerSession(): StoredPlayerSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(PLAYER_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredPlayerSession;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function playerSessionToken(): string | null {
+  const session = readPlayerSession();
+  return typeof session?.sessionToken === 'string' && session.sessionToken.length > 0
+    ? session.sessionToken
+    : null;
+}
+
+// Converte um token (ou null) num objeto de headers que
+// carrega 'x-session-token'; o casamento acontece no
+// apiFetch via spread, sem derrubar o content-type.
+function sessionHeaders(token: string | null): Record<string, string> {
+  return token ? { 'x-session-token': token } : {};
 }
 
 interface Game {
@@ -94,6 +148,7 @@ export const database = {
   async updateGame(id: string, updates: Partial<Game>): Promise<Game> {
     return apiFetch<Game>(`/games/${id}`, {
       method: 'PATCH',
+      headers: sessionHeaders(adminTokenForGame(id)),
       body: JSON.stringify(updates),
     });
   },
@@ -135,15 +190,20 @@ export const database = {
   },
 
   async updatePlayer(id: string, updates: Partial<Player>): Promise<Player> {
+    const session = readPlayerSession();
+    const token =
+      playerSessionToken() ?? (session?.gameId ? adminTokenForGame(session.gameId) : null);
     return apiFetch<Player>(`/players/${id}`, {
       method: 'PATCH',
+      headers: sessionHeaders(token),
       body: JSON.stringify(updates),
     });
   },
 
-  async batchUpdatePlayers(updates: Array<{ id: string; position: number; skipped_turn: boolean }>): Promise<void> {
+  async batchUpdatePlayers(gameId: string, updates: Array<{ id: string; position: number; skipped_turn: boolean }>): Promise<void> {
     await apiFetch('/players/batch-update', {
       method: 'POST',
+      headers: sessionHeaders(adminTokenForGame(gameId)),
       body: JSON.stringify({ updates }),
     });
   },
@@ -174,6 +234,13 @@ export const database = {
 
   async getAnswersByGameAndQuestion(gameId: string, questionIndex: number): Promise<Answer[]> {
     return apiFetch<Answer[]>(`/games/${gameId}/answers/question/${questionIndex}`);
+  },
+
+  async revealQuestion(gameId: string): Promise<RevealResult> {
+    return apiFetch<RevealResult>(`/games/${gameId}/reveal`, {
+      method: 'POST',
+      headers: sessionHeaders(adminTokenForGame(gameId)),
+    });
   },
 
   async playerHeartbeat(playerId: string, sessionToken: string): Promise<boolean> {
