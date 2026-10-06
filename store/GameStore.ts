@@ -77,6 +77,8 @@ interface GameStore {
   viewState: ViewState;
   bankQuestions: BankQuestion[];
   bankError: string;
+  cleanupSummary: string;
+  isCleaning: boolean;
   game: Game | null;
   players: Player[];
   currentPlayer: Player | null;
@@ -106,6 +108,7 @@ interface GameStore {
     options: BankOptionInput[],
   ) => Promise<boolean>;
   deleteBankQuestion: (questionId: number) => Promise<boolean>;
+  cleanupGames: (keepNewest: number, emptyLobbyMinutes: number, abandonedHours: number) => Promise<boolean>;
   returnToHome: () => void;
   createGame: (raceLength?: number | null) => Promise<void>;
   joinGame: (gameCode: string) => Promise<boolean>;
@@ -170,6 +173,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   realtimeStatus: 'DISCONNECTED',
   bankQuestions: [],
   bankError: '',
+  cleanupSummary: '',
+  isCleaning: false,
 
   loadBankQuestions: async () => {
     const { game } = get();
@@ -207,6 +212,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
           : 'Não foi possível salvar a pergunta. Confira os campos e tente novamente.',
       });
       return false;
+    }
+  },
+
+  cleanupGames: async (keepNewest, emptyLobbyMinutes, abandonedHours) => {
+    const { game } = get();
+    const adminToken = readAdminToken(game?.id);
+    if (!game || !adminToken) {
+      set({ bankError: 'Sessão de administrador ausente nesta partida.' });
+      return false;
+    }
+    set({ isCleaning: true, cleanupSummary: '' });
+    try {
+      const summary = await database.cleanupGames(
+        game.id, adminToken, keepNewest, emptyLobbyMinutes, abandonedHours);
+      set({
+        cleanupSummary: summary.deleted === 0
+          ? 'Nada para limpar: nenhuma partida abandonada.'
+          : `${summary.deleted} partida(s) apagada(s), sobraram ${summary.games_after}.`,
+      });
+      return true;
+    } catch (error) {
+      console.error('Error cleaning up games:', error);
+      set({ cleanupSummary: 'Não foi possível limpar agora. Tente novamente.' });
+      return false;
+    } finally {
+      set({ isCleaning: false });
     }
   },
 

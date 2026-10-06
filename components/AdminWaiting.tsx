@@ -4,6 +4,7 @@ import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
 import { AdminBank } from './AdminBank';
+import { AdminCleanup } from './AdminCleanup';
 import { assetPath } from '../lib/assetPath';
 
 export function AdminWaiting() {
@@ -146,6 +147,8 @@ export function AdminWaiting() {
             {startError && <p role="alert" className="text-center text-sm text-red-300">{startError}</p>}
 
             <AdminBank />
+
+            <AdminCleanup />
           </div>
         </div>
       </div>

@@ -92,6 +92,13 @@ export interface BankOptionInput {
   is_correct: boolean;
 }
 
+export interface CleanupSummary {
+  deleted: number;
+  codes: string[];
+  games_before: number;
+  games_after: number;
+}
+
 export interface DealtQuestion {
   id: number;
   title: string;
@@ -399,6 +406,24 @@ export const database = {
       p_game_id: gameId,
       p_admin_session_token: adminToken,
       p_question_id: questionId,
+    });
+  },
+
+  // ---------- Retenção (exige o token do admin) ----------
+
+  async cleanupGames(
+    gameId: string,
+    adminToken: string,
+    keepNewest: number,
+    emptyLobbyMinutes: number,
+    abandonedHours: number,
+  ): Promise<CleanupSummary> {
+    return rpc<CleanupSummary>('rpc_cleanup_games', {
+      p_game_id: gameId,
+      p_admin_session_token: adminToken,
+      p_keep_newest: keepNewest,
+      p_empty_lobby_minutes: emptyLobbyMinutes,
+      p_abandoned_hours: abandonedHours,
     });
   },
 
