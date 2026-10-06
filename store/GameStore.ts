@@ -27,7 +27,7 @@ interface Answer {
   player_id: string;
   question_index: number;
   selected_option: number;
-  is_correct: boolean;
+  is_correct: boolean | null;
   response_time_ms: number | null;
   created_at?: string;
 }
@@ -43,7 +43,6 @@ type SetupPlayerResult =
 const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
 const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
 const ADMIN_SESSION_KEY = 'f1-ethics-admin-session';
-const correctnessField = globalThis.String.fromCharCode(105, 115, 95, 99, 111, 114, 114, 101, 99, 116) as 'is_correct';
 export const DATABASE_SCHEMA_ERROR =
   'A estrutura do banco de dados está desatualizada. Execute o docker-compose e tente novamente.';
 
@@ -526,12 +525,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return delta ? { ...get().currentPlayer!, position: delta.position } : get().currentPlayer;
           })()
         : null,
-      answers: get().answers.map((answer) => {
-        const delta = deltaByPlayer.get(answer.player_id);
-        return delta && answer.question_index === result.question_index
-          ? { ...answer, [correctnessField]: delta[correctnessField], response_time_ms: delta.response_time_ms }
-          : answer;
-      }),
     });
     const key = await database.getAnswerKey(game.id, result.question_index);
     set({ answerKey: key.option_index });

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [versao_supabase]
+    branches: [versao_supabase, port/supabase]
   workflow_dispatch:
 
 permissions:

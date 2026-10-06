@@ -68,7 +68,7 @@ export interface Answer {
   player_id: string;
   question_index: number;
   selected_option: number;
-  is_correct: boolean;
+  is_correct: boolean | null;
   response_time_ms: number | null;
   created_at?: string;
 }
@@ -85,7 +85,6 @@ export interface RevealDelta {
   team_name: string;
   position: number;
   advance: number;
-  is_correct: boolean;
   response_time_ms: number | null;
 }
 
@@ -273,14 +272,6 @@ export const database = {
       throw toApiError({ message: 'Player not found' });
     }
     return data;
-  },
-
-  async batchUpdatePlayers(
-    updates: Array<{ id: string; position: number }>
-  ): Promise<void> {
-    await rpc<boolean>('rpc_batch_update_players', {
-      p_updates: updates,
-    });
   },
 
   // ---------- Answers ----------

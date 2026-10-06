@@ -1,153 +1,77 @@
 # Grande Prêmio da Ética
 
-Jogo multiplayer de perguntas sobre ética no automobilismo, apresentado como uma corrida de Fórmula 1. Cada dupla escolhe uma equipe, responde a estudos de caso e avança pelo tabuleiro conforme o resultado. Um administrador conduz a partida e revela as respostas.
+Jogo multiplayer de perguntas sobre ética no automobilismo, apresentado como uma corrida de Fórmula 1.
+Cada dupla escolhe uma equipe, responde aos casos e avança conforme o resultado. Um administrador conduz a
+partida e revela as respostas.
 
-## Visão geral
+## Como a corrida funciona
 
-- Até 11 duplas podem participar de uma partida, cada uma escolhendo uma equipe de F1 diferente.
-- Administrador e jogadores acessam a mesma partida em dispositivos diferentes usando um código de seis caracteres.
-- O PostgreSQL armazena partidas, participantes e respostas, com sincronização via polling a cada 2 segundos.
-- Há 35 estudos de caso cadastrados. Cada nova partida recebe uma seleção aleatória de 20 perguntas, em uma ordem própria.
-- O tabuleiro de uma partida com 20 perguntas tem 30 casas. O tamanho do percurso é calculado proporcionalmente à quantidade de perguntas.
-- A duração pretendida é de aproximadamente 10 minutos, considerando cerca de 30 segundos por pergunta. Esse tempo é uma estimativa, não um limite automático: depende do ritmo das respostas e do administrador.
+- As 35 perguntas são sorteadas e **todas** entram na partida: a corrida dura o conjunto inteiro.
+- Resposta **correta** avança **4/3/2/1** casas conforme a velocidade entre as respostas corretas; da quarta
+  colocada em diante avança 1 casa.
+- Resposta **errada ou ausente** avança **0**. Não existe punição, perda de rodada nem retrocesso.
+- **Não existe linha de chegada.** Ao terminar a última pergunta a classificação é calculada, como no Kahoot.
+  Ninguém é eliminado no meio da corrida.
+- Empates são decididos pela soma dos rankings de velocidade ao longo da corrida; persistindo, pela ordem de
+  entrada na sala.
+- O tabuleiro é um indicador de progresso: a escala é `4 x número de perguntas` (o máximo que uma dupla que é
+  a mais rápida em todas as perguntas pode somar). Nada depende de cruzá-la.
 
-## Como jogar
+## Onde ficam a verdade e o relógio
 
-### 1. Criar uma partida
+Tudo o que pontua vive no Postgres (Supabase), nunca no navegador:
 
-Na tela inicial, selecione **Criar partida**. O jogo cria uma sala e exibe o código que os participantes usarão para entrar. A ordem aleatória das perguntas é salva na partida para que todos recebam exatamente a mesma sequência.
+| assunto | onde mora |
+| --- | --- |
+| perguntas e alternativas | tabelas `questions` e `question_options` |
+| correção da resposta | `rpc_create_answer`, a partir do gabarito no banco |
+| tempo de resposta | relógio do servidor, a partir de `games.question_shown_at` |
+| avanço das duplas | `rpc_reveal`, atômica e idempotente |
+| classificação final | `rpc_get_classification` |
 
-### 2. Entrar como jogador
-
-Em cada dispositivo de jogador:
-
-1. Selecione **Entrar na partida** e informe o código compartilhado pelo administrador.
-2. Escolha um nome para a dupla.
-3. Escolha uma equipe de F1 ainda não selecionada naquela partida.
-4. Aguarde o administrador iniciar a corrida.
-
-Equipes disponíveis: McLaren, Ferrari, Red Bull, Mercedes, Aston Martin, Williams, Visa Cash App, Alpine, Audi, Cadillac e Haas.
-
-### 3. Responder às perguntas
-
-Todas as equipes que ainda não terminaram recebem a mesma pergunta e podem responder. Cada caso de ética apresenta quatro alternativas e uma resposta correta. O tempo de resposta é medido individualmente desde a exibição da pergunta e salvo com a resposta.
-
-- Quando o administrador seleciona **Revelar Resposta**, as respostas corretas são ordenadas da mais rápida para a mais lenta. Elas avançam 4, 3, 2 ou 1 casa, respectivamente; respostas corretas a partir da quarta avançam 1 casa.
-- Uma resposta incorreta avança 0 casas. Não há punições nem perda de rodada.
-- O avanço é aplicado na revelação, e a alternativa correta é destacada na tela do administrador e do jogador.
-- O administrador revela a resposta depois que todas as equipes ainda na corrida responderam.
-- Ao avançar para a pergunta seguinte, cada jogador recebe uma mensagem contextual do engenheiro sobre seu desempenho, sequência de acertos, velocidade e posição na corrida.
-- Equipes que já terminaram não precisam responder às perguntas seguintes.
-- A sala de espera considera uma dupla desconectada depois de 90 segundos sem heartbeat. Antes da largada, o administrador pode removê-la; a equipe F1 volta a ficar disponível.
-- A identidade e a partida do jogador ficam salvas no armazenamento local do navegador. Ao retornar no mesmo navegador, escolha retomar a mesma dupla (mantendo posição e respostas) ou, enquanto a sala ainda aguarda a largada, remover a dupla anterior e configurar outra. Depois que a corrida começa, a troca de identidade fica bloqueada para preservar o andamento da partida.
-
-### 4. Cruzar a linha de chegada
-
-O percurso é calculado com **1,5 casa por pergunta**, com mínimo de 10 casas. Portanto, uma partida padrão de 20 perguntas usa 30 casas. A posição é limitada ao tamanho calculado para a partida.
-
-As posições são atualizadas a cada revelação e limitadas ao tamanho do percurso. As equipes que terminam são ordenadas pela pergunta em que cruzaram a linha; em caso de empate, vale o horário de envio registrado pelo servidor. Ao fim da corrida, as telas do jogador e do administrador exibem o mesmo pódio (logo, carrinho e nome da equipe) e a classificação completa. Depois que os resultados aparecem, o jogador pode selecionar **Participar de uma nova corrida**; a sessão e o estado locais são limpos antes de voltar à tela inicial.
-
-## Telas e animações
-
-- **Sala do administrador:** mostra o código da partida, o grid de largada e as equipes conectadas. O administrador inicia a corrida, revela as respostas e avança as perguntas.
-- **Espera dos jogadores:** mostra o código, as equipes conectadas e uma animação de pneu soft girando. Ao iniciar a partida, o pneu sai da tela, o semáforo muda de vermelho para verde e, em seguida, aparece a primeira pergunta.
-- **Resultados:** jogador e administrador veem pódio responsivo com logos e carrinhos pareados às equipes, seguido pela classificação completa. Após a exibição, o jogador pode iniciar sua participação em uma nova corrida.
-
-As interfaces usam as cores e os carrinhos correspondentes às equipes. As animações respeitam a preferência do dispositivo por movimento reduzido.
+- O **gabarito não sai do banco**: a pergunta é servida sem a alternativa correta e a chave só é liberada por
+  `rpc_get_answer_key` **depois** da revelação.
+- Nenhum relógio do jogador decide o resultado: a velocidade é medida no servidor.
+- A revelação é **única**: um segundo clique não pontua de novo (retorna `already_revealed` e não escreve nada).
+- O estado ao vivo chega por **Supabase Realtime** (websocket), não por polling. Um poll de 15 s existe apenas
+  como rede de segurança enquanto o canal não está `SUBSCRIBED`.
+- O acesso é só por RPC (`SECURITY DEFINER`) com RLS ligada; as tabelas de sessão (`private_*`) não são
+  publicadas e continuam ilegíveis para o papel anônimo.
 
 ## Executar localmente
 
-### Requisitos
-
-- Docker e Docker Compose
-- Node.js compatível com Vite 7 e npm
-
-### Passo 1: Configurar variáveis de ambiente
-
-No PowerShell, copie o arquivo de exemplo:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-O backend aceita uma URL de conexão em `DATABASE_URL` ou as configurações individuais `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PGSSLMODE`. `PGSSLMODE=require` habilita SSL. Ajuste as credenciais conforme seu PostgreSQL.
-
-No Docker Compose, a API usa a URL interna `postgresql://daya:1234@postgres:5432/etica_f1` e SSL fica desabilitado para a conexão local entre containers. O banco é publicado em `localhost:5433` para conexões feitas pelo computador; portanto, se executar a API fora do Docker contra esse banco, use `postgresql://daya:1234@localhost:5433/etica_f1` ou configure `PGPORT=5433`, `PGUSER=daya`, `PGPASSWORD=1234` e `PGSSLMODE=disable`.
-
-### Passo 2: Iniciar o banco de dados e API
+Pré-requisitos: Node 20+, Docker e a CLI do Supabase (`npx supabase`).
 
 ```bash
-docker-compose up -d
-```
+# 1. configura o projeto Supabase local (uma vez; cria supabase/config.toml)
+npx supabase init
 
-Isso inicia o PostgreSQL na porta 5433 do computador (5432 dentro do container) e a API em `http://localhost:3002`. O frontend usa essa URL por meio de `VITE_API_URL`. As tabelas e funções são criadas automaticamente no primeiro início do volume.
+# 2. sobe o stack (Postgres, API, Realtime, Studio)
+npx supabase start
 
-### Passo 3: Instalar dependências e executar o frontend
+# 3. aplica o esquema, nesta ordem: o init.sql é a base, as migrações vêm depois
+psql "$(npx supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '\"')" -f supabase/init.sql
+for m in supabase/migrations/*.sql; do
+  psql "$(npx supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '\"')" -f "$m"
+done
 
-```bash
+# 4. aponta o frontend para o stack local
+cp .env.example .env      # preencha com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)='
+
+# 5. dependências e servidor de desenvolvimento
 npm install
 npm run dev
 ```
 
-Para gerar e testar a versão de produção:
+Scripts: `npm run dev`, `npm run build`, `npm run preview`, `npm run typecheck`, `npm test`.
 
-```bash
-npm run build
-npm run preview
-```
+## Publicar
 
-## Arquitetura
+O workflow `.github/workflows/deploy.yml` publica no GitHub Pages a cada push nas branches listadas nele,
+usando os secrets `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (o `base` do Vite já é
+`/grande_premio_da_etica/`).
 
-```
-┌─────────────────┐      HTTP/REST       ┌─────────────────┐      SQL       ┌─────────────────┐
-│                 │ ◄──────────────────► │                 │ ◄────────────► │                 │
-│   Frontend      │                      │   API Server    │                 │   PostgreSQL    │
-│   (Vite/React)  │                      │   (Express)     │                 │   (Docker)      │
-│                 │                      │   Host: 3002   │                 │   Host: 5433    │
-│                 │                      │                │                 │ Container: 5432 │
-└─────────────────┘                      └─────────────────┘                 └─────────────────┘
-```
-
-### Componentes
-
-| Caminho | Responsabilidade |
-| --- | --- |
-| `App.tsx` | Seleciona a tela conforme o estado da partida. |
-| `components/` | Telas de jogador e administrador, tabuleiro, grid, carrinhos, logos e semáforo. |
-| `data/questions.tsx` | Casos, alternativas, equipes, sorteio de perguntas e cálculo do percurso. |
-| `store/GameStore.ts` | Estado compartilhado e operações de partida, respostas, progresso e sincronização. |
-| `lib/database.ts` | Cliente HTTP para a API REST do jogo. |
-| `server/index.js` | Servidor Express com endpoints REST. |
-| `server/init.sql` | Script de inicialização do banco de dados. |
-| `docker-compose.yml` | Orquestração dos containers PostgreSQL e API. |
-| `.env.example` | Exemplo de configuração da API, banco e URL usada pelo frontend. |
-| `start.bat` | Inicializa PostgreSQL e API pelo Windows; depois permite iniciar o frontend com `npm run dev`. |
-| `style.css` | Estilos globais e animações. |
-
-## Tecnologias
-
-- React 18 e TypeScript
-- Vite 7
-- Tailwind CSS 3
-- Zustand para estado compartilhado no cliente
-- PostgreSQL 16 para persistência
-- Express 4 para API REST
-- Docker para containerização
-
-## Atualizações recentes
-
-- Perguntas embaralhadas por partida, com sequência compartilhada e persistida.
-- Partidas novas limitadas a 20 perguntas dentre os 35 casos cadastrados.
-- Tabuleiro ajustado para 30 casas na partida padrão e calculado proporcionalmente ao número de perguntas.
-- Classificação de chegada considera a pergunta de conclusão e, em caso de empate, o horário de envio da resposta.
-- Impedimento de selecionar a mesma equipe F1 mais de uma vez na mesma partida.
-- Entrada de jogadores restrita a salas em espera, com validação transacional no banco.
-- Retomada da identidade/partida do jogador pelo mesmo navegador, heartbeat de presença e remoção de participantes realmente offline antes da largada.
-- Resultados finais exibidos mesmo quando menos de três equipes cruzam a linha de chegada.
-- Avanço das equipes baseado no tempo individual de resposta correta; respostas erradas não avançam nem aplicam punições.
-- Mensagens do engenheiro com variações contextuais para rapidez, acertos, erros, sequência e posição na corrida.
-- Pódio compartilhado entre as telas de jogador e administrador, com logos, carrinhos, nomes e classificação completa; retorno do jogador limpa o estado local da partida.
-- Migração idempotente da API para persistir o tempo de resposta e remover o antigo estado de rodada perdida.
-- Animações de largada e troca de pneus na sala de espera.
-- Melhorias de legibilidade, tamanhos de fonte, imagens de fundo e layout das telas de espera, entrada e perguntas.
-- **Persistência em PostgreSQL com API Express e Docker.**
+Atenção: o projeto hospedado precisa do **mesmo SQL** aplicado no banco dele. O papel anônimo não tem DDL, então
+o `supabase/init.sql` e as migrações de `supabase/migrations/` devem ser aplicados pela CLI autenticada ou pelo
+SQL editor do painel, na mesma ordem.

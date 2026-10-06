@@ -84,7 +84,8 @@ export interface EngineerAnswer {
   player_id: string;
   question_index: number;
   selected_option: number;
-  is_correct: boolean;
+  // Nulo quando o servidor ainda mascara o veredito; a mensagem vem do snapshot revelado.
+  is_correct: boolean | null;
   response_time_ms: number | null;
   created_at?: string;
 }
