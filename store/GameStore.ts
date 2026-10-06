@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { chooseQuestionOrder } from '../lib/questionOrder';
 import {
   database,
   type BankOptionInput,
@@ -106,7 +107,7 @@ interface GameStore {
   ) => Promise<boolean>;
   deleteBankQuestion: (questionId: number) => Promise<boolean>;
   returnToHome: () => void;
-  createGame: () => Promise<void>;
+  createGame: (raceLength?: number | null) => Promise<void>;
   joinGame: (gameCode: string) => Promise<boolean>;
   setupPlayer: (teamName: string, f1Team: string) => Promise<SetupPlayerResult>;
   selectOption: (optionIndex: number) => void;
@@ -280,14 +281,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  createGame: async () => {
+  createGame: async (raceLength = null) => {
     const gameCode = generateGameCode();
     const adminId = Math.random().toString(36).substring(7);
     const adminSessionToken = generateSessionToken();
+    // O host escolhe o comprimento; sem escolha, o servidor sorteia o banco inteiro.
+    const questionOrder = raceLength === null
+      ? null
+      : chooseQuestionOrder(await database.listQuestionIds(), raceLength);
     const game = await database.createGame({
       game_code: gameCode,
       admin_id: adminId,
       admin_session_token: adminSessionToken,
+      question_order: questionOrder,
       phase: 'waiting',
       current_question_index: 0,
       question_revealed: false,

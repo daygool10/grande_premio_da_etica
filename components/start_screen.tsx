@@ -2,17 +2,24 @@ import { useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import { assetPath } from '../lib/assetPath';
 
+const RACE_LENGTHS = [
+  { value: null, label: 'Todas as perguntas', hint: 'a corrida inteira, como sempre' },
+  { value: 20, label: '20 perguntas', hint: 'uma sessão mais curta' },
+  { value: 10, label: '10 perguntas', hint: 'uma rodada rápida' },
+] as const;
+
 export function StartScreen() {
   const { createGame, setViewState } = useGameStore();
   const [createError, setCreateError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [raceLength, setRaceLength] = useState<number | null>(null);
 
   const handleCreateGame = async () => {
     if (isCreating) return;
     setIsCreating(true);
     setCreateError('');
     try {
-      await createGame();
+      await createGame(raceLength);
     } catch (error) {
       console.error('Unable to create a game:', error);
       const databaseError = error as { code?: string };
@@ -42,6 +49,27 @@ export function StartScreen() {
           </span>
           <h1 className="mt-6 text-4xl font-black text-white sm:text-6xl">Grande Prêmio da Ética</h1>
           <p className="mt-4 text-lg text-gray-300 sm:text-2xl">Uma corrida de decisões, responsabilidade e integridade.</p>
+        </div>
+        <div className="mb-5">
+          <p className="text-sm font-bold uppercase tracking-wider text-gray-300">Comprimento da corrida</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-3">
+            {RACE_LENGTHS.map((choice) => (
+              <button
+                key={choice.label}
+                type="button"
+                onClick={() => setRaceLength(choice.value)}
+                aria-pressed={raceLength === choice.value}
+                className={`rounded-xl border-2 px-4 py-3 text-left transition ${
+                  raceLength === choice.value
+                    ? 'border-red-500 bg-red-600/20'
+                    : 'border-gray-600 bg-gray-800/60 hover:border-gray-400'
+                }`}
+              >
+                <span className="block font-bold text-white">{choice.label}</span>
+                <span className="block text-sm text-gray-300">{choice.hint}</span>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <button onClick={() => void handleCreateGame()} disabled={isCreating} className="rounded-xl bg-red-600 px-8 py-6 text-xl font-bold text-white transition hover:bg-red-500 disabled:cursor-wait disabled:opacity-70 sm:text-2xl">

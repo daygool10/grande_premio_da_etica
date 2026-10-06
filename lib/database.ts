@@ -188,6 +188,7 @@ export const database = {
     game_code: string;
     admin_id: string;
     admin_session_token: string;
+    question_order?: number[] | null;
     phase: string;
     current_question_index: number;
     question_revealed: boolean;
@@ -196,7 +197,13 @@ export const database = {
       p_game_code: gameData.game_code,
       p_admin_id: gameData.admin_id,
       p_admin_session_token: gameData.admin_session_token,
+      p_question_order: gameData.question_order ?? null,
     });
+  },
+
+  async listQuestionIds(): Promise<number[]> {
+    const data = await rpc<number[] | null>('rpc_list_question_ids', {});
+    return data ?? [];
   },
 
   async getGameByCode(code: string): Promise<Game | null> {
