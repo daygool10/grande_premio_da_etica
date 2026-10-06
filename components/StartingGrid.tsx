@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { F1Car } from './F1Car';
 import { F1Semaphore } from './F1Semaphore';
+import { MAX_TEAMS } from '../lib/teams';
 
 interface StartingGridPlayer {
   id: string;
@@ -12,7 +13,7 @@ interface StartingGridProps {
   players: StartingGridPlayer[];
 }
 
-const GRID_SIZE = 11;
+const GRID_SIZE = MAX_TEAMS;
 
 export function StartingGrid({ players }: StartingGridProps) {
   const [entryOrder, setEntryOrder] = useState<string[]>([]);

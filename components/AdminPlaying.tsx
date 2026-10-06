@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import {
-  TEAM_COLORS,
   boardScale,
 } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
 
 export function AdminPlaying() {
-  const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers, revealDeltas } = useGameStore();
+  const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers, revealDeltas, realtimeStatus } = useGameStore();
   const [isRevealing, setIsRevealing] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [revealError, setRevealError] = useState('');
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 1500);
-    return () => clearInterval(interval);
   }, [loadGameState]);
+
+  useEffect(() => {
+    if (game?.phase !== 'question' || game.question_revealed) return;
+    // Answers are RLS-gated before reveal, so only the admin refreshes this counter every 2 s.
+    const interval = setInterval(() => void loadGameState(), 2000);
+    return () => clearInterval(interval);
+  }, [game?.phase, game?.question_revealed, loadGameState]);
 
   useEffect(() => {
     if (game?.phase === 'finished') {
@@ -86,7 +91,9 @@ export function AdminPlaying() {
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">🏁</span>
               <h3 className="text-lg font-black uppercase tracking-wider text-white">Tabuleiro da Corrida</h3>
-              <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
+               <span className={`ml-auto text-sm ${realtimeStatus === 'SUBSCRIBED' ? 'text-green-400' : 'text-yellow-400'}`}>
+                 Tempo real: {realtimeStatus === 'SUBSCRIBED' ? 'conectado' : 'degradado'}
+               </span>
                <F1Semaphore status="running" />
             </div>
             <CircuitBoard players={players} boardSize={boardSize} />

@@ -67,6 +67,7 @@ interface GameStore {
   players: Player[];
   currentPlayer: Player | null;
   answers: Answer[];
+  revealedAnswers: Answer[];
   selectedOption: number | null;
   hasAnswered: boolean;
   dealtQuestions: DealtQuestion[];
@@ -80,6 +81,7 @@ interface GameStore {
   recoveryCandidate: PlayerSession | null;
   isCheckingRecovery: boolean;
   recoveryError: string;
+  realtimeStatus: string;
   
   setViewState: (state: ViewState) => void;
   returnToHome: () => void;
@@ -129,6 +131,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   players: [],
   currentPlayer: null,
   answers: [],
+  revealedAnswers: [],
   dealtQuestions: [],
   answerKey: null,
   classification: [],
@@ -142,6 +145,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   recoveryCandidate: null,
   isCheckingRecovery: false,
   recoveryError: '',
+  realtimeStatus: 'DISCONNECTED',
 
   setViewState: (state) => {
     const { game } = get();
@@ -173,6 +177,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       players: [],
       currentPlayer: null,
       answers: [],
+  revealedAnswers: [],
       dealtQuestions: [],
       answerKey: null,
       classification: [],
@@ -648,7 +653,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!isSameGameSnapshot(get().game, updatedGame)) return;
 
     if (allAnswers) {
-      set({ answers: allAnswers });
+      // Só a resposta REVELADA carrega o veredito (o servidor mascara is_correct antes da revelação).
+      // revealedAnswers guarda essa cópia e NÃO é limpa ao avançar: é dela que a mensagem do
+      // engenheiro tira acerto e tempo, em vez de deduzir qualquer coisa no navegador.
+      set(updatedGame.question_revealed
+        ? { answers: allAnswers, revealedAnswers: allAnswers }
+        : { answers: allAnswers });
     }
 
     if (updatedGame) {
@@ -677,13 +687,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game) return () => {};
 
-    // Polling keeps the game state synchronized across clients.
-    const interval = setInterval(() => {
-      get().loadGameState();
-    }, 2000);
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    let fallbackInterval: number | undefined;
+    let unsubscribed = false;
+    const scheduleRefresh = () => {
+      if (refreshTimer !== undefined) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = undefined;
+        void get().loadGameState();
+      }, 120);
+    };
+    const startFallback = () => {
+      if (fallbackInterval !== undefined) return;
+      // Fail-safe only: realtime is the transport, but a lost websocket must not freeze a room.
+      fallbackInterval = window.setInterval(() => void get().loadGameState(), 15_000);
+    };
+    const stopFallback = () => {
+      if (fallbackInterval === undefined) return;
+      clearInterval(fallbackInterval);
+      fallbackInterval = undefined;
+    };
+
+    startFallback();
+    const unsubscribeRealtime = database.subscribeToGameChanges(game.id, {
+      onChange: scheduleRefresh,
+      onStatus: (status) => {
+        set({ realtimeStatus: status });
+        if (status === 'SUBSCRIBED') stopFallback();
+        else if (!unsubscribed) startFallback();
+      },
+    });
 
     return () => {
-      clearInterval(interval);
+      unsubscribed = true;
+      unsubscribeRealtime();
+      stopFallback();
+      if (refreshTimer !== undefined) clearTimeout(refreshTimer);
     };
   },
 }));

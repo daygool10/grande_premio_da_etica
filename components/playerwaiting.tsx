@@ -10,8 +10,6 @@ export function PlayerWaiting() {
 
   useEffect(() => {
     loadGameState();
-    const interval = window.setInterval(loadGameState, 2000);
-    return () => window.clearInterval(interval);
   }, [loadGameState]);
 
   useEffect(() => {

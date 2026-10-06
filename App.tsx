@@ -32,14 +32,21 @@ export default function App() {
     if (!currentPlayer) return;
     const sendHeartbeat = () => void heartbeatPlayer(currentPlayer.id);
     sendHeartbeat();
-    const interval = window.setInterval(sendHeartbeat, 20_000);
+    let heartbeatTimer: number;
+    const scheduleHeartbeat = () => {
+      heartbeatTimer = window.setTimeout(() => {
+        sendHeartbeat();
+        scheduleHeartbeat();
+      }, 20_000);
+    };
+    scheduleHeartbeat();
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') sendHeartbeat();
     };
     window.addEventListener('focus', sendHeartbeat);
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
-      window.clearInterval(interval);
+      window.clearTimeout(heartbeatTimer);
       window.removeEventListener('focus', sendHeartbeat);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };

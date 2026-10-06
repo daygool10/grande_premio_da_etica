@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 import { TeamLogo } from './TeamLogo';
 import { StartingGrid } from './StartingGrid';
 import { assetPath } from '../lib/assetPath';
@@ -14,8 +14,6 @@ export function AdminWaiting() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 2000);
-    return () => clearInterval(interval);
   }, [loadGameState]);
 
   const handleRemoveOfflinePlayer = async (playerId: string) => {

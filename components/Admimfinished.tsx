@@ -13,10 +13,8 @@ export function AdminFinished() {
   useEffect(() => {
     loadGameState();
     loadClassification();
-    const interval = setInterval(loadGameState, 3000);
     const timer = setTimeout(() => setShowPodium(true), 500);
     return () => {
-      clearInterval(interval);
       clearTimeout(timer);
     };
   }, [loadGameState]);

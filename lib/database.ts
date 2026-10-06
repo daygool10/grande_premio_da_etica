@@ -15,6 +15,29 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+type GameChangeHandlers = {
+  onChange: () => void;
+  onStatus: (status: string) => void;
+};
+
+function subscribeToGameChanges(gameId: string, handlers: GameChangeHandlers): () => void {
+  const channel = supabase.channel(`game:${gameId}`);
+  let removed = false;
+  const notifyChange = () => handlers.onChange();
+
+  channel
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, notifyChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, notifyChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'answers', filter: `game_id=eq.${gameId}` }, notifyChange)
+    .subscribe((status) => handlers.onStatus(status));
+
+  return () => {
+    if (removed) return;
+    removed = true;
+    void supabase.removeChannel(channel);
+  };
+}
+
 // ============================================
 // Tipos (idênticos ao database.ts original)
 // ============================================
@@ -139,6 +162,8 @@ async function rpc<T>(fn: string, params?: Record<string, unknown>): Promise<T> 
 // ============================================
 
 export const database = {
+  subscribeToGameChanges,
+
   // ---------- Games ----------
 
   async createGame(gameData: {

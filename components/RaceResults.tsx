@@ -1,4 +1,4 @@
-import { TEAM_COLORS } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 import { F1Car } from './F1Car';
 import { TeamLogo } from './TeamLogo';
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DATABASE_SCHEMA_ERROR, useGameStore } from '../store/GameStore';
-import { F1_TEAMS, TEAM_COLORS } from '../data/questions';
+import { F1_TEAMS, TEAM_COLORS } from '../lib/teams';
 import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
 

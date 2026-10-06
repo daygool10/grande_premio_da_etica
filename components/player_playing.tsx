@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
-import { boardScale, TEAM_COLORS } from '../data/questions';
+import { boardScale } from '../data/questions';
+import { TEAM_COLORS } from '../lib/teams';
 import { getEngineerMessage } from '../lib/engineerMessages';
 import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
@@ -12,7 +13,7 @@ export function PlayerPlaying() {
     game, currentPlayer, currentQuestion, players, 
     answers, selectedOption, hasAnswered,
     selectOption, submitAnswer, loadGameState, setViewState
-  } = useGameStore();
+  , revealedAnswers} = useGameStore();
   const [displayQuestionIndex, setDisplayQuestionIndex] = useState(
     () => game?.current_question_index ?? 0,
   );
@@ -25,8 +26,6 @@ export function PlayerPlaying() {
 
   useEffect(() => {
     loadGameState();
-    const interval = setInterval(loadGameState, 1500);
-    return () => clearInterval(interval);
   }, [loadGameState]);
 
   useEffect(() => {
@@ -98,7 +97,7 @@ export function PlayerPlaying() {
     const { text } = getEngineerMessage({
       player: currentPlayer,
       players,
-      answers,
+      answers: revealedAnswers,
       questionIndex: displayQuestionIndex,
       boardSize,
       previousMessage: lastEngineerMessage.current,
