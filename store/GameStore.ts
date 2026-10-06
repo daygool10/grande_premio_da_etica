@@ -492,18 +492,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game } = get();
     if (!game || game.question_revealed) return;
 
-    const [gamePlayers, questionAnswers] = await Promise.all([
-      database.getPlayersByGame(game.id),
-      database.getAnswersByGameAndQuestion(game.id, game.current_question_index),
-    ]);
+    const gamePlayers = await database.getPlayersByGame(game.id);
 
-    if (!gamePlayers?.length) {
+    if (!gamePlayers.length) {
       throw new Error('Cannot reveal an answer without players in this game.');
     }
 
-    if (gamePlayers.some((player) => !questionAnswers.some((answer) => answer.player_id === player.id))) {
-      throw new Error('Cannot reveal an answer until every player has submitted one.');
-    }
+    // O host pode pular a pergunta (decisão do dono). Revelar com duplas pendentes é legal: quem
+    // não respondeu avança 0 no servidor e a corrida segue até o fim. Não há portão client-side.
 
     const adminToken = typeof window === 'undefined'
       ? null

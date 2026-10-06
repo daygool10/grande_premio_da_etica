@@ -41,7 +41,7 @@ export function AdminPlaying() {
   const allPlayersAnswered = players.length > 0 && answeredCount === players.length;
 
   const handleRevealAnswer = async () => {
-    if (!allPlayersAnswered || isRevealing) return;
+    if (isRevealing) return;
     setIsRevealing(true);
     setRevealError('');
     try {
@@ -144,7 +144,7 @@ export function AdminPlaying() {
                   {!game?.question_revealed ? (
                     <button
                       onClick={handleRevealAnswer}
-                      disabled={!allPlayersAnswered || isRevealing}
+                      disabled={isRevealing}
                       className="flex-1 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl text-lg transition-all"
                     >
                       {isRevealing ? 'Revelando...' : '🔓 Revelar Resposta'}
@@ -164,7 +164,8 @@ export function AdminPlaying() {
                 )}
                 {!game?.question_revealed && players.length > 0 && !allPlayersAnswered && (
                   <p className="mt-3 text-center text-sm text-gray-400">
-                    Aguardando todas as duplas responderem ({answeredCount}/{players.length}).
+                    {answeredCount} de {players.length} duplas responderam. Revelar agora encerra a
+                    rodada: quem não respondeu avança 0 e a corrida continua.
                   </p>
                 )}
                 {revealError && (
