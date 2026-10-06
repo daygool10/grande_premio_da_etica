@@ -56,3 +56,29 @@ Jogo L8PLAC, dois clientes isolados, sala em `waiting`, grade de 20 vagas.
   mesma chamada devolveu `true` e removeu a dupla. O portao pode falhar e falha.
 - A dupla removida percebeu no heartbeat seguinte: a sessao local foi limpa e a tela voltou para
   "Entrar na partida".
+
+## As tres features do W6
+
+**Autoria (W6a).** Migracao 080000: `questions.id` ganhou sequencia propria e tres RPCs que exigem o token do
+admin (listar, salvar, apagar), com validacao de titulo, cenario, 2 a 6 alternativas, exatamente uma correta,
+texto em todas, e recusa de mexer numa pergunta que esteja numa corrida em andamento. Pela REST, com a chave
+anon: token errado recusado (`P0001`), token certo listou 35 perguntas com o gabarito, criar devolveu id 36
+e todos os rascunhos invalidos foram recusados (duas corretas, nenhuma correta, uma alternativa, alternativa
+em branco, titulo vazio). Uma pergunta criada assim foi sorteada para a partida AUTH02 e corrigida pela
+propria chave: alternativa 2 correta avancou 4, alternativa 0 errada avancou 0, e `rpc_get_answer_key`
+devolveu 2. No navegador o painel listou o banco, criou uma pergunta pelo formulario ("Pergunta criada", de
+36 para 37 linhas, id 37 no banco com 2 alternativas) sem erro na tela.
+
+**Sorteio do host (W6b).** Migracao 090000 valida a ordem recebida (todo id existe, sem repetidos) e
+acrescenta `rpc_list_question_ids`, que devolve so os ids. A tela inicial ganhou o comprimento da corrida.
+Medido: sem ordem, 35 perguntas; com uma ordem de 10, exatamente essas 10, sem repeticao e sem `is_correct` no
+payload; tres ordens invalidas recusadas com `P0001`. No navegador, a escolha "10 perguntas" gerou a partida
+57BR47 com `question_order` de dez ids distintos embaralhados.
+
+**Retencao (W6c).** Migracao 100000 adiciona `games.updated_at` com trigger e `rpc_cleanup_games`. Medido
+com dez partidas semeadas e datas forcadas: os guardas recusaram token errado, `keep_newest` 0 e
+`abandoned_hours` 0; a regra de sala vazia agiu sozinha (EMPTY1 a EMPTY4 apagadas) e a isencao das 5 mais
+recentes segurou EMPTY5 e EMPTY6, igualmente velhas; a partida do proprio admin sobreviveu mesmo com
+`updated_at` de 30 h; a corrida jogada e abandonada (PLAY01) caiu na corrida seguinte. Sobraram NEW002,
+NEW001, LIVE00, EMPTY6 e EMPTY5, e o banco ficou sem nenhum jogador, resposta ou sessao orfa. No navegador o
+painel mostrou 5/60/24, rodou e respondeu "1 partida(s) apagada(s), sobraram 5.".
