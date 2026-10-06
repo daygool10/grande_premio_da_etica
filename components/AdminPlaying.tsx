@@ -2,16 +2,13 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
 import {
   TEAM_COLORS,
-  getBoardSize,
-  questions,
-  getQuestionAt,
+  boardScale,
 } from '../data/questions';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
-import { sortFinishers } from '../lib/finishOrder';
 
 export function AdminPlaying() {
-  const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers } = useGameStore();
+  const { game, players, currentQuestion, revealAnswer, nextQuestion, loadGameState, setViewState, answers, revealDeltas } = useGameStore();
   const [isRevealing, setIsRevealing] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [revealError, setRevealError] = useState('');
@@ -28,22 +25,15 @@ export function AdminPlaying() {
     }
   }, [game?.phase, setViewState]);
 
-  const q = currentQuestion || getQuestionAt(
-    game?.current_question_index || 0,
-    game?.question_order,
-  );
-  const questionCount = game?.question_order?.length ?? questions.length;
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const q = currentQuestion;
+  const questionCount = useGameStore((state) => state.dealtQuestions.length);
+  const answerKey = useGameStore((state) => state.answerKey);
+  const boardSize = boardScale(questionCount);
 
-  const eligiblePlayers = players.filter((player) => player.position < boardSize);
-  const answeredCount = eligiblePlayers.filter(p => {
+  const answeredCount = players.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
-  const allPlayersAnswered = players.length > 0 && answeredCount === eligiblePlayers.length;
-  const finishedPlayers = players.filter(player => player.position >= boardSize);
-  const orderedFinishers = sortFinishers(finishedPlayers, answers);
-  const podiumSize = Math.max(1, Math.min(3, players.length));
-  const podiumReady = finishedPlayers.length >= podiumSize;
+  const allPlayersAnswered = players.length > 0 && answeredCount === players.length;
 
   const handleRevealAnswer = async () => {
     if (!allPlayersAnswered || isRevealing) return;
@@ -86,7 +76,7 @@ export function AdminPlaying() {
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${
               game?.question_revealed ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
             }`}>
-              {game?.question_revealed ? '✅ Resposta Revelada' : `⏳ ${answeredCount}/${eligiblePlayers.length} responderam`}
+              {game?.question_revealed ? '✅ Resposta Revelada' : `⏳ ${answeredCount}/${players.length} responderam`}
             </span>
             <span className="text-gray-400 text-sm">Código: <span className="text-white font-mono font-bold">{game?.game_code}</span></span>
           </div>
@@ -97,7 +87,7 @@ export function AdminPlaying() {
               <span className="text-2xl">🏁</span>
               <h3 className="text-lg font-black uppercase tracking-wider text-white">Tabuleiro da Corrida</h3>
               <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
-              <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
+               <F1Semaphore status="running" />
             </div>
             <CircuitBoard players={players} boardSize={boardSize} />
         </section>
@@ -119,14 +109,14 @@ export function AdminPlaying() {
                     <div
                       key={i}
                       className={`p-4 rounded-lg border transition-all ${
-                        game?.question_revealed && opt.isCorrect
+                        game?.question_revealed && opt.option_index === answerKey
                           ? 'bg-green-900/30 border-green-500/50'
                           : 'bg-gray-700/30 border-gray-600/50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                          game?.question_revealed && opt.isCorrect
+                          game?.question_revealed && opt.option_index === answerKey
                             ? 'bg-green-600 text-white'
                             : 'bg-gray-600 text-gray-300'
                         }`}>
@@ -135,7 +125,7 @@ export function AdminPlaying() {
                         <div className="flex-1">
                           <p className="text-sm text-gray-200">{opt.text}</p>
                         </div>
-                        {game?.question_revealed && opt.isCorrect && (
+                        {game?.question_revealed && opt.option_index === answerKey && (
                           <span className="text-green-400 text-xl">✓</span>
                         )}
                       </div>
@@ -162,14 +152,12 @@ export function AdminPlaying() {
                     </button>
                   )}
                 </div>
-                {!game?.question_revealed && eligiblePlayers.length === 0 && (
-                  <p className="mt-3 text-center text-sm text-gray-400">
-                    Nenhuma dupla precisa responder esta pergunta.
-                  </p>
+                {!game?.question_revealed && players.length === 0 && (
+                    <p className="mt-3 text-center text-sm text-gray-400">Nenhuma dupla está conectada.</p>
                 )}
-                {!game?.question_revealed && eligiblePlayers.length > 0 && !allPlayersAnswered && (
+                {!game?.question_revealed && players.length > 0 && !allPlayersAnswered && (
                   <p className="mt-3 text-center text-sm text-gray-400">
-                    Aguardando todas as duplas elegíveis responderem ({answeredCount}/{eligiblePlayers.length}).
+                    Aguardando todas as duplas responderem ({answeredCount}/{players.length}).
                   </p>
                 )}
                 {revealError && (
@@ -185,7 +173,8 @@ export function AdminPlaying() {
               <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">👥 Equipes Conectadas</h3>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {players.map(p => {
-                  const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
+                   const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
+                  const delta = revealDeltas.find((item) => item.player_id === p.id);
                   return (
                     <div key={p.id} className="flex items-center gap-3 bg-gray-700/30 rounded-lg p-3">
                       <div 
@@ -198,15 +187,14 @@ export function AdminPlaying() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold">{p.position}/{boardSize}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>
-                          {p.position >= boardSize
-                            ? 'Finalizou'
-                            : hasAnswered
-                              ? 'Respondeu'
-                              : 'Aguardando'}
+                           {hasAnswered
+                               ? 'Respondeu'
+                               : 'Aguardando'}
                         </span>
+                        {delta && <p className="mt-1 text-xs text-gray-300">+{delta.advance} · {delta.response_time_ms ?? '-'} ms</p>}
                       </div>
                     </div>
                   );
@@ -215,30 +203,7 @@ export function AdminPlaying() {
             </div>
 
             {/* Podium Preview */}
-            {finishedPlayers.length > 0 && (
-              <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3 uppercase tracking-wider">
-                  {podiumReady ? '🏆 Pódio completo' : '🏁 Chegada'}
-                </h3>
-                {!podiumReady ? (
-                  <p className="text-sm text-gray-300">
-                    {orderedFinishers[0].team_name} está em 1º lugar. O pódio será gerado quando mais {podiumSize - finishedPlayers.length} equipe
-                    {podiumSize - finishedPlayers.length === 1 ? '' : 's'} cruzar
-                    {podiumSize - finishedPlayers.length === 1 ? '' : 'em'} a linha de chegada.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                  {orderedFinishers.slice(0, 3).map((p, i) => (
-                      <div key={p.id} className="flex items-center gap-2">
-                        <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
-                        <span className="font-bold text-sm">{p.team_name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+             {game?.question_revealed && <div className="rounded-xl border border-gray-700 p-4 text-sm text-gray-300">Avanço e tempo registrados pelo servidor.</div>}
           </div>
         </div>
       </div>

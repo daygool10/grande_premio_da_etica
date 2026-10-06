@@ -39,7 +39,7 @@ interface Player {
   last_seen: string;
 }
 
-interface Answer {
+export interface Answer {
   id: string;
   game_id: string;
   player_id: string;
@@ -48,6 +48,37 @@ interface Answer {
   is_correct: boolean;
   response_time_ms: number | null;
   created_at?: string;
+}
+
+export interface DealtQuestion {
+  id: number;
+  title: string;
+  scenario: string;
+  options: Array<{ option_index: number; text: string }>;
+}
+
+export interface RevealDelta {
+  player_id: string;
+  team_name: string;
+  position: number;
+  advance: number;
+  is_correct: boolean;
+  response_time_ms: number | null;
+}
+
+export interface RevealResult {
+  status: 'revealed' | 'already_revealed';
+  revealed: true;
+  question_index: number;
+  deltas: RevealDelta[];
+}
+
+export interface ClassificationEntry {
+  rank: number;
+  player_id: string;
+  team_name: string;
+  position: number;
+  speed_rank_sum: number;
 }
 
 export interface GameState {
@@ -65,18 +96,20 @@ export interface GameState {
  * O Supabase retorna erros Postgres como objetos/strings. Mapeamos o código
  * para o formato que o GameStore.ts já espera (error.code).
  */
-function toApiError(error: any): Error & { code?: string } {
+function toApiError(error: unknown): Error & { code?: string } {
   if (!error) {
-    const err: any = new Error('Erro desconhecido');
-    return err;
+    return new Error('Erro desconhecido');
   }
 
   const message: string =
     typeof error === 'string'
       ? error
-      : error.message || error.details || 'Erro desconhecido';
+      : typeof error === 'object' && error !== null &&
+        ('message' in error || 'details' in error)
+        ? String(('message' in error ? error.message : error.details) || 'Erro desconhecido')
+        : 'Erro desconhecido';
 
-  const err: any = new Error(message);
+  const err = new Error(message) as Error & { code?: string };
 
   // O Postgres devolve código 23505 (unique) / P0001 (raise) como texto
   // dentro da mensagem. O Supabase também pode expor 'code' diretamente.
@@ -84,8 +117,8 @@ function toApiError(error: any): Error & { code?: string } {
     err.code = '23505';
   } else if (message.includes('P0001')) {
     err.code = 'P0001';
-  } else if (error.code) {
-    err.code = error.code;
+  } else if (typeof error === 'object' && error !== null && 'code' in error) {
+    err.code = String(error.code);
   }
 
   return err;
@@ -95,7 +128,7 @@ function toApiError(error: any): Error & { code?: string } {
  * Executa uma RPC do Supabase e devolve o `data`. Lança erro tipado
  * no mesmo formato que o backend Express devolvia.
  */
-async function rpc<T>(fn: string, params?: Record<string, any>): Promise<T> {
+async function rpc<T>(fn: string, params?: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, params ?? {});
   if (error) throw toApiError(error);
   return data as T;
@@ -114,14 +147,12 @@ export const database = {
     admin_session_token: string;
     phase: string;
     current_question_index: number;
-    question_order: number[];
     question_revealed: boolean;
   }): Promise<Game> {
     return rpc<Game>('rpc_create_game', {
       p_game_code: gameData.game_code,
       p_admin_id: gameData.admin_id,
       p_admin_session_token: gameData.admin_session_token,
-      p_question_order: gameData.question_order,
     });
   },
 
@@ -234,17 +265,41 @@ export const database = {
     player_id: string;
     question_index: number;
     selected_option: number;
-    is_correct: boolean;
-    response_time_ms: number;
   }): Promise<Answer> {
     return rpc<Answer>('rpc_create_answer', {
       p_game_id: answerData.game_id,
       p_player_id: answerData.player_id,
       p_question_index: answerData.question_index,
       p_selected_option: answerData.selected_option,
-      p_is_correct: answerData.is_correct,
-      p_response_time_ms: answerData.response_time_ms,
     });
+  },
+
+  async revealQuestion(gameId: string, adminToken: string): Promise<RevealResult> {
+    return rpc<RevealResult>('rpc_reveal', {
+      p_game_id: gameId,
+      p_admin_session_token: adminToken,
+    });
+  },
+
+  async getDealtQuestions(gameId: string): Promise<DealtQuestion[]> {
+    const data = await rpc<DealtQuestion[] | null>('rpc_get_dealt_questions', {
+      p_game_id: gameId,
+    });
+    return data ?? [];
+  },
+
+  async getAnswerKey(gameId: string, questionIndex: number): Promise<{ option_index: number }> {
+    return rpc<{ option_index: number }>('rpc_get_answer_key', {
+      p_game_id: gameId,
+      p_question_index: questionIndex,
+    });
+  },
+
+  async getClassification(gameId: string): Promise<ClassificationEntry[]> {
+    const data = await rpc<ClassificationEntry[] | null>('rpc_get_classification', {
+      p_game_id: gameId,
+    });
+    return data ?? [];
   },
 
   async getAnswersByGame(gameId: string): Promise<Answer[]> {

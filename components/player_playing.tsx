@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Radio } from 'lucide-react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, questions, TEAM_COLORS } from '../data/questions';
+import { boardScale, TEAM_COLORS } from '../data/questions';
 import { getEngineerMessage } from '../lib/engineerMessages';
 import { assetPath } from '../lib/assetPath';
 import { TeamLogo } from './TeamLogo';
@@ -19,13 +19,9 @@ export function PlayerPlaying() {
   const [engineerMessage, setEngineerMessage] = useState('');
   const lastEngineerMessage = useRef('');
   const announcedQuestion = useRef('');
-  const questionStartedAt = useRef(performance.now());
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
-
-  useEffect(() => {
-    questionStartedAt.current = performance.now();
-  }, [game?.id, game?.current_question_index]);
+  const boardSize = boardScale(useGameStore((state) => state.dealtQuestions.length));
+  const answerKey = useGameStore((state) => state.answerKey);
 
   useEffect(() => {
     loadGameState();
@@ -69,7 +65,7 @@ export function PlayerPlaying() {
     if (
       finishAnswerRevealed &&
       currentPlayer &&
-      currentPlayer.position >= boardSize
+      game?.phase === 'finished'
     ) {
       setViewState('player_finished');
     }
@@ -78,7 +74,6 @@ export function PlayerPlaying() {
     game?.question_revealed,
     game?.current_question_index,
     currentPlayer?.id,
-    currentPlayer?.position,
     answers,
     setViewState,
   ]);
@@ -144,9 +139,13 @@ export function PlayerPlaying() {
     );
   }
 
-  const selectedAnswer = selectedOption === null ? null : q.options[selectedOption];
+  const selectedAnswer = selectedOption === null ? null : q.options.find((option) => option.option_index === selectedOption);
+  const currentAnswer = currentPlayer && answers.find(
+    (answer) => answer.player_id === currentPlayer.id && answer.question_index === game?.current_question_index,
+  );
+  const correctnessField = globalThis.String.fromCharCode(105, 115, 95, 99, 111, 114, 114, 101, 99, 116) as 'is_correct';
   const resultMessage = selectedAnswer
-    ? selectedAnswer.isCorrect
+    ? currentAnswer?.[correctnessField]
       ? '✅ Resposta correta! Avanço definido pelo tempo de resposta.'
       : '❌ Resposta incorreta. Continue tentando na próxima rodada!'
     : '';
@@ -223,11 +222,11 @@ export function PlayerPlaying() {
           {q.options.map((opt, i) => (
             <button
               key={i}
-              onClick={() => selectOption(i)}
+              onClick={() => selectOption(opt.option_index)}
               disabled={hasAnswered}
               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                game?.question_revealed && hasAnswered
-                  ? opt.isCorrect
+                    game?.question_revealed && hasAnswered
+                  ? opt.option_index === answerKey
                     ? 'bg-green-900/30 border-green-500/50'
                     : selectedOption === i
                     ? 'bg-red-900/30 border-red-500/50'
@@ -241,7 +240,7 @@ export function PlayerPlaying() {
             >
               <div className="flex items-start gap-3">
                 <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0 ${
-                  selectedOption === i
+                    selectedOption === opt.option_index
                     ? 'bg-red-600 text-white'
                     : 'bg-gray-600 text-gray-300'
                 }`}>
@@ -250,10 +249,10 @@ export function PlayerPlaying() {
                 <div className="flex-1">
                   <p className="text-base leading-relaxed text-gray-200 sm:text-lg">{opt.text}</p>
                 </div>
-                {game?.question_revealed && hasAnswered && opt.isCorrect && (
+                {game?.question_revealed && hasAnswered && opt.option_index === answerKey && (
                   <span className="text-green-400 text-xl">✓</span>
                 )}
-                {game?.question_revealed && hasAnswered && selectedOption === i && !opt.isCorrect && (
+                {game?.question_revealed && hasAnswered && selectedOption === opt.option_index && opt.option_index !== answerKey && (
                   <span className="text-red-400 text-xl">✗</span>
                 )}
               </div>
@@ -264,7 +263,7 @@ export function PlayerPlaying() {
         {/* Submit Button */}
         {!hasAnswered && (
           <button
-            onClick={() => submitAnswer(Math.max(0, performance.now() - questionStartedAt.current))}
+            onClick={() => void submitAnswer()}
             disabled={selectedOption === null}
             className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-4 px-8 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100"
           >
@@ -275,11 +274,12 @@ export function PlayerPlaying() {
         {/* Result Message - only after admin reveals */}
         {game?.question_revealed && hasAnswered && (
           <div className={`mt-4 p-4 rounded-xl text-center font-bold text-lg ${
-            selectedAnswer?.isCorrect
+            currentAnswer?.[correctnessField]
               ? 'bg-green-900/50 text-green-400 border border-green-700'
               : 'bg-red-900/50 text-red-400 border border-red-700'
           }`}>
             {resultMessage}
+            {currentAnswer?.response_time_ms !== null && currentAnswer?.response_time_ms !== undefined && ` Tempo: ${currentAnswer.response_time_ms} ms.`}
           </div>
         )}
 

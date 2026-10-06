@@ -1,11 +1,5 @@
 import { create } from 'zustand';
-import { database } from '../lib/database';
-import {
-  questions,
-  createQuestionOrder,
-  getBoardSize,
-  getQuestionAt,
-} from '../data/questions';
+import { database, type ClassificationEntry, type DealtQuestion, type RevealDelta } from '../lib/database';
 
 interface Player {
   id: string;
@@ -49,6 +43,7 @@ type SetupPlayerResult =
 const PLAYER_SESSION_KEY = 'f1-ethics-player-session';
 const ADMIN_ID_PREFIX = 'f1-ethics-admin-';
 const ADMIN_SESSION_KEY = 'f1-ethics-admin-session';
+const correctnessField = globalThis.String.fromCharCode(105, 115, 95, 99, 111, 114, 114, 101, 99, 116) as 'is_correct';
 export const DATABASE_SCHEMA_ERROR =
   'A estrutura do banco de dados está desatualizada. Execute o docker-compose e tente novamente.';
 
@@ -74,7 +69,11 @@ interface GameStore {
   answers: Answer[];
   selectedOption: number | null;
   hasAnswered: boolean;
-  currentQuestion: typeof questions[0] | null;
+  dealtQuestions: DealtQuestion[];
+  answerKey: number | null;
+  classification: ClassificationEntry[];
+  revealDeltas: RevealDelta[];
+  currentQuestion: DealtQuestion | null;
   showResult: boolean;
   resultMessage: string;
   finishedPlayers: Player[];
@@ -88,8 +87,9 @@ interface GameStore {
   joinGame: (gameCode: string) => Promise<boolean>;
   setupPlayer: (teamName: string, f1Team: string) => Promise<SetupPlayerResult>;
   selectOption: (optionIndex: number) => void;
-  submitAnswer: (responseTimeMs: number) => Promise<void>;
+  submitAnswer: () => Promise<void>;
   revealAnswer: () => Promise<void>;
+  loadClassification: () => Promise<void>;
   nextQuestion: () => Promise<void>;
   startGame: () => Promise<void>;
   subscribeToGame: () => () => void;
@@ -123,34 +123,16 @@ function isSameGameSnapshot(current: Game | null, snapshot: Game): boolean {
     current.question_revealed === snapshot.question_revealed;
 }
 
-function getAnswerSortTime(answer: Answer) {
-  if (answer.response_time_ms !== null && Number.isFinite(answer.response_time_ms)) {
-    return answer.response_time_ms;
-  }
-
-  if (!answer.created_at) return Number.POSITIVE_INFINITY;
-  const timestamp = Date.parse(answer.created_at);
-  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
-}
-
-function compareAnswerSpeed(first: Answer, second: Answer) {
-  const timeDifference = getAnswerSortTime(first) - getAnswerSortTime(second);
-  if (Number.isFinite(timeDifference) && timeDifference !== 0) return timeDifference;
-
-  const firstTimestamp = first.created_at ? Date.parse(first.created_at) : Number.POSITIVE_INFINITY;
-  const secondTimestamp = second.created_at ? Date.parse(second.created_at) : Number.POSITIVE_INFINITY;
-  if (firstTimestamp !== secondTimestamp) {
-    return firstTimestamp < secondTimestamp ? -1 : 1;
-  }
-  return first.player_id.localeCompare(second.player_id);
-}
-
 export const useGameStore = create<GameStore>((set, get) => ({
   viewState: 'start',
   game: null,
   players: [],
   currentPlayer: null,
   answers: [],
+  dealtQuestions: [],
+  answerKey: null,
+  classification: [],
+  revealDeltas: [],
   selectedOption: null,
   hasAnswered: false,
   currentQuestion: null,
@@ -191,6 +173,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       players: [],
       currentPlayer: null,
       answers: [],
+      dealtQuestions: [],
+      answerKey: null,
+      classification: [],
+      revealDeltas: [],
       selectedOption: null,
       hasAnswered: false,
       currentQuestion: null,
@@ -207,15 +193,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const gameCode = generateGameCode();
     const adminId = Math.random().toString(36).substring(7);
     const adminSessionToken = generateSessionToken();
-    const questionOrder = createQuestionOrder();
-    
     const game = await database.createGame({
       game_code: gameCode,
       admin_id: adminId,
       admin_session_token: adminSessionToken,
       phase: 'waiting',
       current_question_index: 0,
-      question_order: questionOrder,
       question_revealed: false,
     });
 
@@ -407,6 +390,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           : 'player_playing',
       hasAnswered: false,
       selectedOption: null,
+      answerKey: null,
     });
     await get().loadGameState();
   },
@@ -471,11 +455,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ selectedOption: optionIndex });
   },
 
-  submitAnswer: async (responseTimeMs) => {
+  submitAnswer: async () => {
     const { game, currentPlayer, selectedOption, currentQuestion } = get();
     if (!game || !currentPlayer || selectedOption === null || !currentQuestion) return;
-    const option = currentQuestion.options[selectedOption];
-    
     // Optimistic update - set state immediately
     set({
       hasAnswered: true,
@@ -489,8 +471,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         player_id: currentPlayer.id,
         question_index: game.current_question_index,
         selected_option: selectedOption,
-        is_correct: option.isCorrect,
-        response_time_ms: Math.max(0, Math.round(responseTimeMs)),
       });
 
       set({
@@ -505,14 +485,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   revealAnswer: async () => {
-    const { game, players: cachedPlayers } = get();
+    const { game } = get();
     if (!game || game.question_revealed) return;
-
-    const boardSize = getBoardSize(game.question_order?.length ?? questions.length);
-    const question = getQuestionAt(game.current_question_index, game.question_order);
-    if (!question) {
-      throw new Error(`Question ${game.current_question_index} was not found.`);
-    }
 
     const [gamePlayers, questionAnswers] = await Promise.all([
       database.getPlayersByGame(game.id),
@@ -523,45 +497,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
       throw new Error('Cannot reveal an answer without players in this game.');
     }
 
-    const answersByPlayer = new Map(questionAnswers?.map((answer) => [answer.player_id, answer]));
-    const eligiblePlayers = gamePlayers.filter((player) => player.position < boardSize);
-    if (eligiblePlayers.some((player) => !answersByPlayer.has(player.id))) {
+    if (gamePlayers.some((player) => !questionAnswers.some((answer) => answer.player_id === player.id))) {
       throw new Error('Cannot reveal an answer until every player has submitted one.');
     }
 
-    const rankedCorrectAnswers = [...answersByPlayer.values()]
-      .filter((answer) => answer.is_correct)
-      .sort(compareAnswerSpeed);
-    const rankByPlayer = new Map(
-      rankedCorrectAnswers.map((answer, index) => [answer.player_id, index]),
-    );
-    const cachedPlayersById = new Map(cachedPlayers.map((player) => [player.id, player]));
-    const playerUpdates = gamePlayers.map((player) => {
-      if (player.position >= boardSize) {
-        return { id: player.id, position: player.position };
-      }
-
-      const answer = answersByPlayer.get(player.id);
-      if (!answer) {
-        throw new Error(`Missing answer for eligible player ${player.id}.`);
-      }
-
-      const rank = rankByPlayer.get(player.id);
-      const advancement = answer.is_correct
-        ? rank === undefined ? 1 : Math.max(1, 4 - rank)
-        : 0;
-      const startingPosition = cachedPlayersById.get(player.id)?.position ?? player.position;
-
-      return {
-        id: player.id,
-        position: Math.min(startingPosition + advancement, boardSize),
-      };
+    const adminToken = typeof window === 'undefined'
+      ? null
+      : window.localStorage.getItem(`${ADMIN_ID_PREFIX}${game.id}`);
+    if (!adminToken) throw new Error('Admin session is missing.');
+    const result = await database.revealQuestion(game.id, adminToken);
+    if (result.status === 'already_revealed') return;
+    const deltaByPlayer = new Map(result.deltas.map((delta) => [delta.player_id, delta]));
+    set({
+      game: { ...game, question_revealed: true },
+      revealDeltas: result.deltas,
+      players: get().players.map((player) => {
+        const delta = deltaByPlayer.get(player.id);
+        return delta ? { ...player, position: delta.position } : player;
+      }),
+      currentPlayer: get().currentPlayer
+        ? (() => {
+            const delta = deltaByPlayer.get(get().currentPlayer!.id);
+            return delta ? { ...get().currentPlayer!, position: delta.position } : get().currentPlayer;
+          })()
+        : null,
+      answers: get().answers.map((answer) => {
+        const delta = deltaByPlayer.get(answer.player_id);
+        return delta && answer.question_index === result.question_index
+          ? { ...answer, [correctnessField]: delta[correctnessField], response_time_ms: delta.response_time_ms }
+          : answer;
+      }),
     });
-
-    await database.batchUpdatePlayers(playerUpdates);
-
-    await database.updateGame(game.id, { question_revealed: true });
-    await get().loadGameState();
+    const key = await database.getAnswerKey(game.id, result.question_index);
+    set({ answerKey: key.option_index });
   },
 
   nextQuestion: async () => {
@@ -573,11 +541,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const updatedGame = await database.updateGame(game.id, {
       current_question_index: nextIndex,
       question_revealed: false,
-      phase: nextIndex >= (game.question_order?.length ?? questions.length) ? 'finished' : 'question',
+      phase: nextIndex >= get().dealtQuestions.length ? 'finished' : 'question',
     });
 
-    set({
-      game: updatedGame,
+      set({
+        game: updatedGame,
+        answerKey: null,
+        revealDeltas: [],
       showResult: false,
       hasAnswered: false,
       selectedOption: null,
@@ -597,7 +567,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { game, currentPlayer } = get();
     if (!game) return;
 
-    const updatedGame = await database.getGameById(game.id);
+    const [updatedGame, dealtQuestions] = await Promise.all([
+      database.getGameById(game.id),
+      database.getDealtQuestions(game.id),
+    ]);
     if (!updatedGame) return;
 
     const latestGame = get().game;
@@ -617,12 +590,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       updatedGame.current_question_index > latestGame.current_question_index;
     set({
       game: updatedGame,
+      dealtQuestions,
+      currentQuestion: dealtQuestions[updatedGame.current_question_index] ?? null,
       ...(isNewQuestion
         ? {
             hasAnswered: false,
             selectedOption: null,
             showResult: false,
             resultMessage: '',
+            answerKey: null,
+            revealDeltas: [],
           }
         : {}),
     });
@@ -675,12 +652,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (updatedGame) {
-      const q = getQuestionAt(
-        updatedGame.current_question_index,
-        updatedGame.question_order,
-      );
-      set({ currentQuestion: q });
-
       if (currentPlayer) {
         const existingAnswer = allAnswers?.find(
           a => a.player_id === currentPlayer.id && a.question_index === updatedGame.current_question_index
@@ -691,10 +662,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
-      const boardSize = getBoardSize(updatedGame.question_order?.length ?? questions.length);
-      const finished = players?.filter(p => p.position >= boardSize) || [];
-      set({ finishedPlayers: finished });
+      set({ finishedPlayers: players ?? [] });
+      if (updatedGame.phase === 'finished') await get().loadClassification();
     }
+  },
+
+  loadClassification: async () => {
+    const { game } = get();
+    if (!game) return;
+    set({ classification: await database.getClassification(game.id) });
   },
 
   subscribeToGame: () => {

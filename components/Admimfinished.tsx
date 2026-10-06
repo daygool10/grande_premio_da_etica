@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { sortFinishers } from '../lib/finishOrder';
 import { F1Semaphore } from './F1Semaphore';
-import { getBoardSize, questions } from '../data/questions';
+import { boardScale } from '../data/questions';
 import { RaceResults } from './RaceResults';
 
 export function AdminFinished() {
-  const { game, players, answers, loadGameState, returnToHome } = useGameStore();
+  const { game, players, loadGameState, loadClassification, classification, returnToHome, dealtQuestions } = useGameStore();
   const [showPodium, setShowPodium] = useState(false);
   const [showReturnButton, setShowReturnButton] = useState(false);
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const boardSize = boardScale(dealtQuestions.length);
 
   useEffect(() => {
     loadGameState();
+    loadClassification();
     const interval = setInterval(loadGameState, 3000);
     const timer = setTimeout(() => setShowPodium(true), 500);
     return () => {
@@ -21,18 +21,10 @@ export function AdminFinished() {
     };
   }, [loadGameState]);
 
-  const finishedPlayers = players.filter(player => player.position >= boardSize);
-  const podiumSize = Math.max(1, Math.min(3, players.length));
-  const podiumReady = game?.phase === 'finished' || finishedPlayers.length >= podiumSize;
-
-  const orderedFinishers = sortFinishers(finishedPlayers, answers);
-  const sortedPlayers = [
-    ...orderedFinishers,
-    ...players
-      .filter(player => player.position < boardSize)
-      .sort((a, b) => b.position - a.position),
-  ];
-  const podium = orderedFinishers.slice(0, 3);
+  const podiumReady = game?.phase === 'finished';
+  const sortedPlayers = classification
+    .map((entry) => players.find((player) => player.id === entry.player_id))
+    .filter((player): player is typeof players[number] => Boolean(player));
 
   useEffect(() => {
     if (!podiumReady || !showPodium) return;

@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/GameStore';
-import { getBoardSize, questions } from '../data/questions';
-import { sortFinishers } from '../lib/finishOrder';
+import { boardScale } from '../data/questions';
 import { RaceResults } from './RaceResults';
 
 export function PlayerFinished() {
-  const { game, players, currentPlayer, answers, loadGameState, returnToHome } = useGameStore();
+  const { game, players, currentPlayer, answers, loadGameState, loadClassification, classification, returnToHome, dealtQuestions } = useGameStore();
   const [showConfetti, setShowConfetti] = useState(true);
   const [showPodium, setShowPodium] = useState(false);
   const [showReturnButton, setShowReturnButton] = useState(false);
-  const boardSize = getBoardSize(game?.question_order?.length ?? questions.length);
+  const boardSize = boardScale(dealtQuestions.length);
 
   useEffect(() => {
     loadGameState();
+    loadClassification();
     const interval = setInterval(loadGameState, 3000);
 
     const timer = setTimeout(() => setShowPodium(true), 2000);
@@ -34,15 +34,13 @@ export function PlayerFinished() {
         currentPlayer,
       ]
     : players;
-  const finishedPlayers = playersWithCurrent.filter(player => player.position >= boardSize);
   const podiumReady = game?.phase === 'finished';
-  const orderedFinishers = sortFinishers(finishedPlayers, answers);
-  const sortedPlayers = [
-    ...orderedFinishers,
-    ...playersWithCurrent
-      .filter(player => player.position < boardSize)
-      .sort((a, b) => b.position - a.position),
-  ];
+  const sortedPlayers = classification
+    .map((entry) => playersWithCurrent.find((player) => player.id === entry.player_id))
+    .filter((player): player is typeof playersWithCurrent[number] => Boolean(player));
+  const latestAnswer = currentPlayer
+    ? answers.filter((answer) => answer.player_id === currentPlayer.id).sort((a, b) => b.question_index - a.question_index)[0]
+    : undefined;
 
   useEffect(() => {
     if (!podiumReady || !showPodium) return;
@@ -91,13 +89,12 @@ export function PlayerFinished() {
           
           <h2 className="text-5xl font-black mb-2">
             <span className="text-yellow-400">
-              {currentPlayer && currentPlayer.position >= boardSize ? 'CHEGOU!' : 'FIM DA CORRIDA'}
+              FIM DA CORRIDA
             </span>
           </h2>
           <p className="text-gray-400 mb-4 text-lg">
-            {currentPlayer && currentPlayer.position >= boardSize
-              ? `${currentPlayer.team_name} cruzou a linha de chegada!`
-              : `A corrida terminou. ${currentPlayer?.team_name} avançou ${currentPlayer?.position ?? 0} de ${boardSize} casas.`}
+            {`A corrida terminou. ${currentPlayer?.team_name ?? 'Sua equipe'} avançou ${currentPlayer?.position ?? 0} de ${boardSize} casas.`}
+            {latestAnswer?.response_time_ms !== null && latestAnswer?.response_time_ms !== undefined && ` Tempo da última resposta: ${latestAnswer.response_time_ms} ms.`}
           </p>
           
           <div className={`transition-all duration-1000 ${showPodium ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
