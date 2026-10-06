@@ -223,9 +223,14 @@ function TrackCar({
 }
 
 export function CircuitBoard({ players, boardSize, compact = false }: CircuitBoardProps) {
+  // A escala do tabuleiro vem do numero de perguntas sorteadas. Enquanto essa lista nao chegou
+  // (ou se ela falhou), boardSize e 0, a geometria divide por zero, o navegador descarta o
+  // transform e os carros caem no canto do tabuleiro, fora da pista. Sem escala, o carro fica
+  // na casa 0, que e o unico lugar honesto para ele.
+  const safeBoardSize = Number.isFinite(boardSize) && boardSize >= 1 ? Math.floor(boardSize) : 1;
   const animationTrack = useMemo(
-    () => getTrackPositions(boardSize * TRACK_ANIMATION_STEPS),
-    [boardSize],
+    () => getTrackPositions(safeBoardSize * TRACK_ANIMATION_STEPS),
+    [safeBoardSize],
   );
   const playersAtPosition = new Map<number, CircuitBoardPlayer[]>();
 
@@ -284,7 +289,7 @@ export function CircuitBoard({ players, boardSize, compact = false }: CircuitBoa
         </svg>
 
         {players.map((player) => {
-          const position = Math.max(0, Math.min(boardSize, player.position));
+          const position = Math.max(0, Math.min(safeBoardSize, player.position));
           const group = playersAtPosition.get(player.position) ?? [player];
           const slot = group.findIndex((groupPlayer) => groupPlayer.id === player.id);
           const isStartingGrid = position === 0;

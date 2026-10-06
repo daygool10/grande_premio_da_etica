@@ -24,6 +24,12 @@ describe('F1 team registry', () => {
     }
   });
 
+  it('gives every team a car image, so no duo can race without a car', () => {
+    // As nove equipes historicas entraram sem arte propria e ficaram sem carro nenhum no tabuleiro.
+    const withoutCar = TEAMS.filter((team) => !team.livery.image).map((team) => team.label);
+    expect(withoutCar).toEqual([]);
+  });
+
   it('derives capacity from the registry and falls back for unknown colours', () => {
     expect(TEAM_COUNT).toBe(TEAMS.length);
     expect(MAX_TEAMS).toBe(TEAMS.length);

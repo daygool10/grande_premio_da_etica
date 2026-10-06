@@ -97,6 +97,12 @@ export function AdminPlaying() {
                <F1Semaphore status="running" />
             </div>
             <CircuitBoard players={players} boardSize={boardSize} />
+            {questionCount === 0 && (
+              <p role="alert" className="mt-3 text-center text-sm text-yellow-300">
+                As perguntas desta partida não carregaram. Atualize a página; se continuar assim, o banco
+                ainda não recebeu as migrações.
+              </p>
+            )}
         </section>
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
