@@ -73,6 +73,25 @@ export interface Answer {
   created_at?: string;
 }
 
+export interface BankOption {
+  option_index: number;
+  option_text: string;
+  is_correct: boolean;
+}
+
+export interface BankQuestion {
+  id: number;
+  title: string;
+  scenario: string;
+  position: number;
+  options: BankOption[];
+}
+
+export interface BankOptionInput {
+  option_text: string;
+  is_correct: boolean;
+}
+
 export interface DealtQuestion {
   id: number;
   title: string;
@@ -334,6 +353,46 @@ export const database = {
       p_question_index: questionIndex,
     });
     return data ?? [];
+  },
+
+  // ---------- Banco de perguntas (autoria, exige o token do admin) ----------
+
+  async listBankQuestions(gameId: string, adminToken: string): Promise<BankQuestion[]> {
+    const data = await rpc<BankQuestion[] | null>('rpc_author_list_questions', {
+      p_game_id: gameId,
+      p_admin_session_token: adminToken,
+    });
+    return data ?? [];
+  },
+
+  async saveBankQuestion(
+    gameId: string,
+    adminToken: string,
+    questionId: number | null,
+    title: string,
+    scenario: string,
+    options: BankOptionInput[],
+  ): Promise<{ id: number; position: number }> {
+    return rpc<{ id: number; position: number }>('rpc_author_save_question', {
+      p_game_id: gameId,
+      p_admin_session_token: adminToken,
+      p_question_id: questionId,
+      p_title: title,
+      p_scenario: scenario,
+      p_options: options,
+    });
+  },
+
+  async deleteBankQuestion(
+    gameId: string,
+    adminToken: string,
+    questionId: number,
+  ): Promise<{ deleted: boolean; id: number }> {
+    return rpc<{ deleted: boolean; id: number }>('rpc_author_delete_question', {
+      p_game_id: gameId,
+      p_admin_session_token: adminToken,
+      p_question_id: questionId,
+    });
   },
 
   // ---------- RPCs de sessão / presença ----------

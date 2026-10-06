@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import { database, type ClassificationEntry, type DealtQuestion, type RevealDelta } from '../lib/database';
+import {
+  database,
+  type BankOptionInput,
+  type BankQuestion,
+  type ClassificationEntry,
+  type DealtQuestion,
+  type RevealDelta,
+} from '../lib/database';
 
 interface Player {
   id: string;
@@ -60,8 +67,15 @@ interface AdminSession {
   viewState: Extract<ViewState, `admin_${string}`>;
 }
 
+function readAdminToken(gameId: string | undefined): string | null {
+  if (typeof window === 'undefined' || !gameId) return null;
+  return window.localStorage.getItem(`${ADMIN_ID_PREFIX}${gameId}`);
+}
+
 interface GameStore {
   viewState: ViewState;
+  bankQuestions: BankQuestion[];
+  bankError: string;
   game: Game | null;
   players: Player[];
   currentPlayer: Player | null;
@@ -83,6 +97,14 @@ interface GameStore {
   realtimeStatus: string;
   
   setViewState: (state: ViewState) => void;
+  loadBankQuestions: () => Promise<void>;
+  saveBankQuestion: (
+    questionId: number | null,
+    title: string,
+    scenario: string,
+    options: BankOptionInput[],
+  ) => Promise<boolean>;
+  deleteBankQuestion: (questionId: number) => Promise<boolean>;
   returnToHome: () => void;
   createGame: () => Promise<void>;
   joinGame: (gameCode: string) => Promise<boolean>;
@@ -145,6 +167,71 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isCheckingRecovery: false,
   recoveryError: '',
   realtimeStatus: 'DISCONNECTED',
+  bankQuestions: [],
+  bankError: '',
+
+  loadBankQuestions: async () => {
+    const { game } = get();
+    const adminToken = readAdminToken(game?.id);
+    if (!game || !adminToken) {
+      set({ bankError: 'Sessão de administrador ausente nesta partida.' });
+      return;
+    }
+    try {
+      set({ bankQuestions: await database.listBankQuestions(game.id, adminToken), bankError: '' });
+    } catch (error) {
+      console.error('Error loading the question bank:', error);
+      set({ bankError: 'Não foi possível carregar o banco de perguntas.' });
+    }
+  },
+
+  saveBankQuestion: async (questionId, title, scenario, options) => {
+    const { game } = get();
+    const adminToken = readAdminToken(game?.id);
+    if (!game || !adminToken) {
+      set({ bankError: 'Sessão de administrador ausente nesta partida.' });
+      return false;
+    }
+    try {
+      const saved = await database.saveBankQuestion(game.id, adminToken, questionId, title, scenario, options);
+      await get().loadBankQuestions();
+      set({ bankError: '' });
+      return saved.id > 0;
+    } catch (error) {
+      console.error('Error saving the question:', error);
+      const message = error instanceof Error ? error.message : '';
+      set({
+        bankError: message.includes('race in progress')
+          ? 'Esta pergunta está numa corrida em andamento e não pode mudar agora.'
+          : 'Não foi possível salvar a pergunta. Confira os campos e tente novamente.',
+      });
+      return false;
+    }
+  },
+
+  deleteBankQuestion: async (questionId) => {
+    const { game } = get();
+    const adminToken = readAdminToken(game?.id);
+    if (!game || !adminToken) {
+      set({ bankError: 'Sessão de administrador ausente nesta partida.' });
+      return false;
+    }
+    try {
+      const result = await database.deleteBankQuestion(game.id, adminToken, questionId);
+      await get().loadBankQuestions();
+      set({ bankError: '' });
+      return result.deleted;
+    } catch (error) {
+      console.error('Error deleting the question:', error);
+      const message = error instanceof Error ? error.message : '';
+      set({
+        bankError: message.includes('race in progress')
+          ? 'Esta pergunta está numa corrida em andamento e não pode ser apagada agora.'
+          : 'Não foi possível apagar a pergunta.',
+      });
+      return false;
+    }
+  },
 
   setViewState: (state) => {
     const { game } = get();
