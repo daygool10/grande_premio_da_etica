@@ -23,7 +23,6 @@ export function PlayerPlaying() {
   const announcedQuestion = useRef('');
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
   const boardSize = boardScale(useGameStore((state) => state.dealtQuestions.length));
-  const answerKey = useGameStore((state) => state.answerKey);
 
   useEffect(() => {
     loadGameState();
@@ -244,45 +243,53 @@ export function PlayerPlaying() {
 
         {/* Options */}
         <div className="space-y-3 mb-6">
-          {q.options.map((opt, i) => (
-            <button
-              key={i}
-              onClick={() => selectOption(opt.option_index)}
-              disabled={hasAnswered}
-              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    game?.question_revealed && hasAnswered
-                  ? opt.option_index === answerKey
-                    ? 'bg-green-900/30 border-green-500/50'
-                    : selectedOption === i
-                    ? 'bg-red-900/30 border-red-500/50'
-                    : 'bg-gray-800/30 border-gray-700/50 opacity-50'
-                  : hasAnswered
-                  ? 'bg-gray-700/30 border-gray-600/50'
-                  : selectedOption === i
-                  ? 'bg-red-600/20 border-red-500'
-                  : 'bg-gray-800/50 border-gray-700 hover:border-gray-500'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0 ${
-                    selectedOption === opt.option_index
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-600 text-gray-300'
-                }`}>
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <div className="flex-1">
-                  <p className="text-base leading-relaxed text-gray-200 sm:text-lg">{opt.text}</p>
+          {q.options.map((opt, i) => {
+            // O veredito de cada opcao vem do proprio payload e SO existe depois da revelacao,
+            // para a pergunta revelada (rpc_get_dealt_questions). Antes disso opt.is_correct e
+            // undefined e nada e pintado. A tela do jogador nunca le o answerKey do admin: era
+            // esse o defeito, o answerKey e sempre nulo aqui e tudo caia no vermelho.
+            const optRevealed = Boolean(game?.question_revealed) && hasAnswered;
+            const isCorrectOption = opt.is_correct === true;
+            const isPicked = selectedOption === opt.option_index;
+
+            return (
+              <button
+                key={i}
+                onClick={() => selectOption(opt.option_index)}
+                disabled={hasAnswered}
+                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                  optRevealed
+                    ? isCorrectOption
+                      ? 'bg-green-900/30 border-green-500/50'
+                      : isPicked
+                      ? 'bg-red-900/30 border-red-500/50'
+                      : 'bg-gray-800/30 border-gray-700/50 opacity-50'
+                    : hasAnswered
+                    ? 'bg-gray-700/30 border-gray-600/50'
+                    : isPicked
+                    ? 'bg-red-600/20 border-red-500'
+                    : 'bg-gray-800/50 border-gray-700 hover:border-gray-500'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0 ${
+                    isPicked ? 'bg-red-600 text-white' : 'bg-gray-600 text-gray-300'
+                  }`}>
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-base leading-relaxed text-gray-200 sm:text-lg">{opt.text}</p>
+                  </div>
+                  {optRevealed && isCorrectOption && (
+                    <span className="text-green-400 text-xl">✓</span>
+                  )}
+                  {optRevealed && isPicked && !isCorrectOption && (
+                    <span className="text-red-400 text-xl">✗</span>
+                  )}
                 </div>
-                {game?.question_revealed && hasAnswered && opt.option_index === answerKey && (
-                  <span className="text-green-400 text-xl">✓</span>
-                )}
-                {game?.question_revealed && hasAnswered && selectedOption === opt.option_index && opt.option_index !== answerKey && (
-                  <span className="text-red-400 text-xl">✗</span>
-                )}
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Submit Button */}

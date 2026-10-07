@@ -103,7 +103,7 @@ export interface DealtQuestion {
   id: number;
   title: string;
   scenario: string;
-  options: Array<{ option_index: number; text: string }>;
+  options: Array<{ option_index: number; text: string; is_correct?: boolean }>;
 }
 
 export interface RevealDelta {
