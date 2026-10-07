@@ -154,8 +154,9 @@ export function PlayerPlaying() {
   const currentAnswer = currentPlayer && answers.find(
     (answer) => answer.player_id === currentPlayer.id && answer.question_index === game?.current_question_index,
   );
-  const resultMessage = selectedAnswer
-    ? currentAnswer?.is_correct
+  const hasAnswerVerdict = currentAnswer?.is_correct !== null && currentAnswer?.is_correct !== undefined;
+  const resultMessage = selectedAnswer && hasAnswerVerdict
+    ? currentAnswer.is_correct
       ? '✅ Resposta correta! Avanço definido pelo tempo de resposta.'
       : '❌ Resposta incorreta. Continue tentando na próxima rodada!'
     : '';
@@ -251,9 +252,10 @@ export function PlayerPlaying() {
               disabled={hasAnswered}
               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     game?.question_revealed && hasAnswered
-                  ? opt.option_index === answerKey
+                  ? opt.option_index === answerKey ||
+                    (selectedOption === opt.option_index && currentAnswer?.is_correct === true)
                     ? 'bg-green-900/30 border-green-500/50'
-                    : selectedOption === i
+                    : selectedOption === opt.option_index
                     ? 'bg-red-900/30 border-red-500/50'
                     : 'bg-gray-800/30 border-gray-700/50 opacity-50'
                   : hasAnswered
@@ -265,7 +267,11 @@ export function PlayerPlaying() {
             >
               <div className="flex items-start gap-3">
                 <span className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0 ${
-                    selectedOption === opt.option_index
+                    selectedOption === opt.option_index &&
+                    game?.question_revealed &&
+                    currentAnswer?.is_correct === true
+                    ? 'bg-green-600 text-white'
+                    : selectedOption === opt.option_index
                     ? 'bg-red-600 text-white'
                     : 'bg-gray-600 text-gray-300'
                 }`}>
@@ -274,7 +280,10 @@ export function PlayerPlaying() {
                 <div className="flex-1">
                   <p className="text-base leading-relaxed text-gray-200 sm:text-lg">{opt.text}</p>
                 </div>
-                {game?.question_revealed && hasAnswered && opt.option_index === answerKey && (
+                {game?.question_revealed && hasAnswered && (
+                  opt.option_index === answerKey ||
+                  (selectedOption === opt.option_index && currentAnswer?.is_correct === true)
+                ) && (
                   <span className="text-green-400 text-xl">✓</span>
                 )}
                 {game?.question_revealed && hasAnswered && selectedOption === opt.option_index && opt.option_index !== answerKey && (
@@ -297,9 +306,9 @@ export function PlayerPlaying() {
         )}
 
         {/* Result Message - only after admin reveals */}
-        {game?.question_revealed && hasAnswered && (
+        {game?.question_revealed && hasAnswered && hasAnswerVerdict && (
           <div className={`mt-4 p-4 rounded-xl text-center font-bold text-lg ${
-            currentAnswer?.is_correct
+            currentAnswer.is_correct === true
               ? 'bg-green-900/50 text-green-400 border border-green-700'
               : 'bg-red-900/50 text-red-400 border border-red-700'
           }`}>
