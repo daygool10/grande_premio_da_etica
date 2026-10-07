@@ -9,6 +9,10 @@ import mercedesCar from '../cars/mercedes.png';
 import redBullCar from '../cars/redbull.png';
 import visaCashAppCar from '../cars/visa cash app.png';
 import williamsCar from '../cars/williams.png';
+import brawnCar from '../cars/brawn.png';
+import lotusCar from '../cars/lotus.png';
+import renaultCar from '../cars/renault.png';
+import sauberCar from '../cars/sauber.png';
 
 export interface Team {
   id: string;
@@ -31,19 +35,14 @@ export const TEAMS: readonly Team[] = [
   { id: 'aston-martin', label: 'Aston Martin', color: '#229971', livery: { image: astonMartinCar, body: '#00665e', accent: '#b6ff00', detail: '#d6e8dc' }, gridSlot: 5 },
   { id: 'williams', label: 'Williams', color: '#64C4FF', livery: { image: williamsCar, body: '#0072ce', accent: '#101820', detail: '#f5f5f5' }, gridSlot: 6 },
   { id: 'visa-cash-app', label: 'Visa Cash App', color: '#6692FF', livery: { image: visaCashAppCar, body: '#183b85', accent: '#101820', detail: '#f5f5f5' }, gridSlot: 7 },
-  { id: 'alpine', label: 'Alpine', color: '#FF87BC', livery: { image: alpineCar, body: '#1478ff', accent: '#ff87bc', detail: '#f5f5f5' }, gridSlot: 8 },
-  { id: 'audi', label: 'Audi', color: '#C0C0C0', livery: { image: audiCar, body: '#c0c0c0', accent: '#20242b', detail: '#bb0a30' }, gridSlot: 9 },
-  { id: 'cadillac', label: 'Cadillac', color: '#00594F', livery: { image: cadillacCar, body: '#161b1d', accent: '#b6a36a', detail: '#f4f0e6' }, gridSlot: 10 },
+  { id: 'alpine', label: 'Alpine', color: '#0093CC', livery: { image: alpineCar, body: '#1478ff', accent: '#ff87bc', detail: '#f5f5f5' }, gridSlot: 8 },
+  { id: 'audi', label: 'Audi', color: '#FF2D00', livery: { image: audiCar, body: '#c0c0c0', accent: '#20242b', detail: '#bb0a30' }, gridSlot: 9 },
+  { id: 'cadillac', label: 'Cadillac', color: '#444444', livery: { image: cadillacCar, body: '#161b1d', accent: '#b6a36a', detail: '#f4f0e6' }, gridSlot: 10 },
   { id: 'haas', label: 'Haas', color: '#B6BABD', livery: { image: haasCar, body: '#b6babd', accent: '#15151e', detail: '#e10600' }, gridSlot: 11 },
-  { id: 'lotus', label: 'Lotus', color: '#C7A34B', livery: { image: cadillacCar, body: '#101820', accent: '#C7A34B', detail: '#F3EAD0' }, gridSlot: 12 },
-  { id: 'brabham', label: 'Brabham', color: '#0B6E3B', livery: { image: astonMartinCar, body: '#0B6E3B', accent: '#F5F5F5', detail: '#E8B800' }, gridSlot: 13 },
-  { id: 'tyrrell', label: 'Tyrrell', color: '#0D254C', livery: { image: williamsCar, body: '#0D254C', accent: '#F5F5F5', detail: '#557995' }, gridSlot: 14 },
-  { id: 'benetton', label: 'Benetton', color: '#009A44', livery: { image: alpineCar, body: '#009A44', accent: '#F5F5F5', detail: '#1B3C8C' }, gridSlot: 15 },
-  { id: 'jordan', label: 'Jordan', color: '#FFD700', livery: { image: visaCashAppCar, body: '#FFD700', accent: '#101820', detail: '#101820' }, gridSlot: 16 },
-  { id: 'sauber', label: 'Sauber', color: '#9B0000', livery: { image: audiCar, body: '#9B0000', accent: '#F5F5F5', detail: '#1C1C1C' }, gridSlot: 17 },
-  { id: 'renault', label: 'Renault', color: '#FFF500', livery: { image: redBullCar, body: '#2A2A6E', accent: '#FFF500', detail: '#F5F5F5' }, gridSlot: 18 },
-  { id: 'toro-rosso', label: 'Toro Rosso', color: '#469BFF', livery: { image: mercedesCar, body: '#2B4562', accent: '#E3272E', detail: '#F5F5F5' }, gridSlot: 19 },
-  { id: 'brawn', label: 'Brawn', color: '#C6E000', livery: { image: haasCar, body: '#F2F3F5', accent: '#1C1C1C', detail: '#C6E000' }, gridSlot: 20 },
+  { id: 'lotus', label: 'Lotus', color: '#C7A34B', livery: { image: lotusCar, body: '#101820', accent: '#C7A34B', detail: '#F3EAD0' }, gridSlot: 12 },
+  { id: 'sauber', label: 'Sauber', color: '#9B0000', livery: { image: sauberCar, body: '#9B0000', accent: '#F5F5F5', detail: '#1C1C1C' }, gridSlot: 13 },
+  { id: 'renault', label: 'Renault', color: '#FFF500', livery: { image: renaultCar, body: '#2A2A6E', accent: '#FFF500', detail: '#F5F5F5' }, gridSlot: 14 },
+  { id: 'brawn', label: 'Brawn', color: '#C6E000', livery: { image: brawnCar, body: '#F2F3F5', accent: '#1C1C1C', detail: '#C6E000' }, gridSlot: 15 },
 ] as const;
 
 export const F1_TEAMS: readonly string[] = TEAMS.map((team) => team.label);

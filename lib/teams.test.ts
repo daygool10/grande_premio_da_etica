@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { getTeamColor, MAX_TEAMS, TEAMS, TEAM_COUNT } from './teams';
 
 describe('F1 team registry', () => {
-  it('contains twenty teams with unique labels and grid slots', () => {
-    expect(TEAMS).toHaveLength(20);
+  it('pins the roster the owner settled on, with unique labels and grid slots', () => {
+    // O dono cortou as cinco equipes historicas que nao tinham carro na lista dele
+    // (Brabham, Tyrrell, Benetton, Jordan, Toro Rosso), entao o registro passou de 20
+    // para 15. A lista fica fixada aqui de proposito: mudar o elenco tem que doer.
+    expect(TEAMS.map((team) => team.label)).toEqual([
+      'McLaren', 'Ferrari', 'Red Bull', 'Mercedes', 'Aston Martin', 'Williams',
+      'Visa Cash App', 'Alpine', 'Audi', 'Cadillac', 'Haas',
+      'Lotus', 'Sauber', 'Renault', 'Brawn',
+    ]);
     expect(new Set(TEAMS.map((team) => team.label)).size).toBe(TEAMS.length);
     expect(new Set(TEAMS.map((team) => team.gridSlot)).size).toBe(TEAMS.length);
   });
@@ -25,7 +32,8 @@ describe('F1 team registry', () => {
   });
 
   it('gives every team a car image, so no duo can race without a car', () => {
-    // As nove equipes historicas entraram sem arte propria e ficaram sem carro nenhum no tabuleiro.
+    // As equipes historicas entraram sem arte propria e ficaram sem carro nenhum no tabuleiro; as
+    // quatro que sobreviveram agora carregam o proprio carro (Lotus, Sauber, Renault, Brawn).
     const withoutCar = TEAMS.filter((team) => !team.livery.image).map((team) => team.label);
     expect(withoutCar).toEqual([]);
   });
@@ -34,6 +42,7 @@ describe('F1 team registry', () => {
     expect(TEAM_COUNT).toBe(TEAMS.length);
     expect(MAX_TEAMS).toBe(TEAMS.length);
     expect(MAX_TEAMS).not.toBe(11);
+    expect(MAX_TEAMS).toBe(15);
     expect(getTeamColor('Unknown team')).toBe('#d1d5db');
   });
 });
