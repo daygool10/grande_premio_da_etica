@@ -1,5 +1,9 @@
 import { assetPath } from './assetPath';
 
+// As logos sao quase todas brancas (as de raster tem media #ffffff): o chip da equipe
+// precisa ser ESCURO, senao a marca desaparece. Mercedes e Lotus ficaram invisiveis com chip
+// claro (#E0E4E7 e #C7A34B) e voltaram para preto. Se trocar um chip, confira o contraste
+// contra a cor da logo antes de commitar.
 export const TEAM_LOGOS: Record<string, string> = {
   McLaren: assetPath('/team-logos/mclaren.png'),
   Ferrari: assetPath('/team-logos/ferrari.png'),
