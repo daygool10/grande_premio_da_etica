@@ -3,6 +3,7 @@ import { useGameStore } from '../store/GameStore';
 import {
   boardScale,
 } from '../data/questions';
+import { sortFinishers } from '../lib/finishOrder';
 import { TEAM_COLORS } from '../lib/teams';
 import { CircuitBoard } from './CircuitBoard';
 import { F1Semaphore } from './F1Semaphore';
@@ -34,11 +35,16 @@ export function AdminPlaying() {
   const questionCount = useGameStore((state) => state.dealtQuestions.length);
   const answerKey = useGameStore((state) => state.answerKey);
   const boardSize = boardScale(questionCount);
+  const finishedPlayers = players.filter((player) => player.position >= boardSize);
+  const orderedFinishers = sortFinishers(finishedPlayers, answers);
+  const podiumSize = Math.max(1, Math.min(3, players.length));
+  const podiumReady = finishedPlayers.length >= podiumSize;
+  const eligiblePlayers = players.filter((player) => player.position < boardSize);
 
-  const answeredCount = players.filter(p => {
+  const answeredCount = eligiblePlayers.filter(p => {
     return answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
   }).length;
-  const allPlayersAnswered = players.length > 0 && answeredCount === players.length;
+  const allPlayersAnswered = players.length > 0 && answeredCount === eligiblePlayers.length;
 
   const handleRevealAnswer = async () => {
     if (isRevealing) return;
@@ -112,14 +118,14 @@ export function AdminPlaying() {
                     <div
                       key={i}
                       className={`p-4 rounded-lg border transition-all ${
-                        game?.question_revealed && opt.isCorrect
+                        game?.question_revealed && opt.option_index === answerKey
                           ? 'bg-green-900/30 border-green-500/50'
                           : 'bg-gray-700/30 border-gray-600/50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                          game?.question_revealed && opt.isCorrect
+                          game?.question_revealed && opt.option_index === answerKey
                             ? 'bg-green-600 text-white'
                             : 'bg-gray-600 text-gray-300'
                         }`}>
