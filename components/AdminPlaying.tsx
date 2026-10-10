@@ -92,7 +92,7 @@ export function AdminPlaying() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.8fr)_minmax(0,0.85fr)] lg:grid-rows-1 lg:items-center lg:gap-5">
+        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.8fr)_minmax(0,0.85fr)] lg:grid-rows-1 lg:items-stretch lg:gap-5">
           <section aria-label="Tabuleiro da Corrida" className="order-1 min-w-0 rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-5 lg:order-2 lg:self-center">
             <div className="mb-3 flex items-center gap-2">
               <span className="text-2xl">🏁</span>
@@ -103,9 +103,9 @@ export function AdminPlaying() {
             <CircuitBoard players={players} boardSize={boardSize} />
         </section>
 
-          <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:max-h-full lg:overflow-y-auto lg:pr-1">
+          <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:h-full lg:overflow-y-auto lg:pr-1">
             {q && (
-              <div className="rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6">
+              <div className="rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 lg:min-h-full">
                 <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-red-400 sm:text-lg">
                   📋 {q.title}
                 </h3>
@@ -178,10 +178,10 @@ export function AdminPlaying() {
             )}
           </div>
 
-          <div className="order-3 min-w-0 space-y-4 lg:max-h-full lg:overflow-y-auto lg:pr-1">
-            <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-4">
+          <div className="order-3 min-w-0 space-y-4 lg:h-full lg:overflow-y-auto lg:pr-1">
+            <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
               <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-gray-300 sm:text-lg">👥 Equipes Conectadas</h3>
-              <div className="space-y-2 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto">
+              <div className="space-y-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                 {players.map(p => {
                    const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
                   const delta = revealDeltas.find((item) => item.player_id === p.id);
