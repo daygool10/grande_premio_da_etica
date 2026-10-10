@@ -92,7 +92,7 @@ export function AdminPlaying() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] lg:grid-rows-1 lg:items-center lg:gap-5">
+        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.8fr)_minmax(0,0.85fr)] lg:grid-rows-1 lg:items-center lg:gap-5">
           <section aria-label="Tabuleiro da Corrida" className="order-1 min-w-0 rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-5 lg:order-2 lg:self-center">
             <div className="mb-3 flex items-center gap-2">
               <span className="text-2xl">🏁</span>
