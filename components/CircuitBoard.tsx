@@ -208,7 +208,7 @@ function TrackCar({
       <div className="-translate-x-1/2 -translate-y-1/2">
         <motion.div style={{ rotate: rotation }}>
           <div
-            className="flex text-[40px] sm:text-[56px] xl:text-[76px]"
+            className="flex text-[clamp(1.25rem,3.8vw,4.75rem)]"
             style={{
               transform: `translate(${sideOffset}em, ${rowOffset}em)`,
               transition: reduceMotion ? 'none' : 'transform 500ms ease-in-out',
@@ -241,8 +241,8 @@ export function CircuitBoard({ players, boardSize, compact = false }: CircuitBoa
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-600 shadow-xl">
-      <div className={`relative isolate aspect-[5/2] overflow-hidden bg-[#10251f] ${compact ? 'min-w-0' : 'min-w-[560px] sm:min-w-[720px]'}`}>
+    <div className="w-full overflow-hidden rounded-2xl border border-gray-600 shadow-xl">
+      <div className={`relative isolate aspect-[5/2] w-full overflow-hidden bg-[#10251f] ${compact ? 'min-w-0' : ''}`}>
         <svg
           viewBox="0 0 1100 440"
           preserveAspectRatio="none"
