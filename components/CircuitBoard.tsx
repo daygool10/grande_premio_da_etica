@@ -205,7 +205,7 @@ function TrackCar({
       <div className="-translate-x-1/2 -translate-y-1/2">
         <motion.div style={{ rotate: rotation }}>
           <div
-            className="flex text-[clamp(1.5rem,4vw,4.75rem)]"
+            className="flex text-[clamp(1.25rem,3.8vw,4.75rem)]"
             style={{
               transform: `translate(${sideOffset}em, ${rowOffset}em)`,
               transition: reduceMotion ? 'none' : 'transform 500ms ease-in-out',

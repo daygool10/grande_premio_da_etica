@@ -74,9 +74,8 @@ export function AdminPlaying() {
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#1a1a2e] p-3 sm:p-5 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+    <main className="min-h-dvh overflow-x-hidden bg-[#1a1a2e] p-3 sm:p-5 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
       <div className="mx-auto flex w-full max-w-[2200px] flex-col gap-4 lg:h-full lg:gap-5">
-        {/* Header */}
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="inline-block rounded bg-red-600 px-3 py-1 text-base font-bold">F1</span>
@@ -92,10 +91,9 @@ export function AdminPlaying() {
           </div>
         </header>
 
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch xl:gap-5">
-          {/* Race Board */}
-          <section className="order-1 flex min-w-0 flex-col justify-center rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-5 lg:order-2 lg:min-h-0">
-            <div className="mb-3 flex items-center gap-2 sm:mb-4">
+        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] lg:grid-rows-1 lg:items-center lg:gap-5">
+          <section aria-label="Tabuleiro da Corrida" className="order-1 min-w-0 rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-5 lg:order-2 lg:self-center">
+            <div className="mb-3 flex items-center gap-2">
               <span className="text-2xl">🏁</span>
               <h3 className="text-lg font-black uppercase tracking-wider text-white sm:text-xl">Tabuleiro da Corrida</h3>
               <span className="ml-auto text-sm text-gray-400 sm:text-base">Tempo real</span>
@@ -104,18 +102,17 @@ export function AdminPlaying() {
             <CircuitBoard players={players} boardSize={boardSize} />
           </section>
 
-          {/* Question Section */}
-          <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:min-h-0">
+          <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:max-h-full lg:overflow-y-auto lg:pr-1">
             {q && (
-              <div className="rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 lg:h-full lg:overflow-y-auto">
-                <h3 className="mb-2 text-base font-bold uppercase tracking-wider text-red-400 sm:text-lg">
+              <div className="rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6">
+                <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-red-400 sm:text-lg">
                   📋 {q.title}
                 </h3>
-                <p className="mb-4 text-base leading-relaxed text-gray-200 sm:mb-5">
+                <p className="mb-5 text-base leading-relaxed text-gray-200 sm:text-lg">
                   {q.scenario}
                 </p>
 
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-3">
                   {q.options.map((opt, i) => (
                     <div
                       key={i}
@@ -134,22 +131,22 @@ export function AdminPlaying() {
                           {String.fromCharCode(65 + i)}
                         </span>
                         <div className="flex-1">
-                          <p className="text-base text-gray-100">{opt.text}</p>
+                          <p className="text-base leading-snug text-gray-100 sm:text-lg">{opt.text}</p>
                         </div>
                         {game?.question_revealed && opt.isCorrect && (
-                          <span className="text-2xl text-green-400">✓</span>
+                          <span className="text-green-400 text-xl">✓</span>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-4 flex gap-3 sm:mt-5">
+                <div className="mt-6 flex gap-3">
                   {!game?.question_revealed ? (
                     <button
                       onClick={handleRevealAnswer}
                       disabled={!allPlayersAnswered || isRevealing}
-                      className="flex-1 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-700 px-4 py-3 text-lg font-bold text-white transition-all hover:from-yellow-500 hover:to-yellow-600 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 sm:text-xl"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-700 px-6 py-3 text-lg font-bold text-white transition-all hover:from-yellow-500 hover:to-yellow-600 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 sm:text-xl"
                     >
                       {isRevealing ? 'Revelando...' : '🔓 Revelar Resposta'}
                     </button>
@@ -157,7 +154,7 @@ export function AdminPlaying() {
                     <button
                       onClick={handleNextQuestion}
                       disabled={isAdvancing}
-                      className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-lg font-bold text-white transition-all hover:from-blue-500 hover:to-blue-600 sm:text-xl"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-lg font-bold text-white transition-all hover:from-blue-500 hover:to-blue-600 sm:text-xl"
                     >
                       {isAdvancing ? 'Avançando...' : '➡️ Próxima Pergunta'}
                     </button>
@@ -180,21 +177,20 @@ export function AdminPlaying() {
             )}
           </div>
 
-          {/* Teams Status Panel */}
-          <div className="order-3 flex min-w-0 flex-col gap-4 lg:min-h-0">
-            <div className="flex flex-col rounded-xl border border-gray-700 bg-gray-800/50 p-4 lg:min-h-0 lg:flex-1">
+          <div className="order-3 min-w-0 space-y-4 lg:max-h-full lg:overflow-y-auto lg:pr-1">
+            <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-4">
               <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-gray-300 sm:text-lg">👥 Equipes Conectadas</h3>
-              <div className="space-y-2 overflow-y-auto lg:min-h-0 lg:flex-1">
+              <div className="space-y-2 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto">
                 {players.map(p => {
                   const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
                   return (
                     <div key={p.id} className="flex items-center gap-3 rounded-lg bg-gray-700/30 p-3">
-                      <div 
+                      <div
                         className="h-4 w-4 flex-shrink-0 rounded-full"
                         style={{ backgroundColor: TEAM_COLORS[p.f1_team] }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-base font-bold">{p.team_name}</p>
+                        <p className="truncate text-base font-bold sm:text-lg">{p.team_name}</p>
                         <p className="text-sm text-gray-300">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
@@ -217,8 +213,8 @@ export function AdminPlaying() {
 
             {/* Podium Preview */}
             {finishedPlayers.length > 0 && (
-              <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-4">
-                <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-yellow-400">
+              <div className="rounded-xl border border-yellow-700/50 bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 p-4">
+                <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-yellow-400 sm:text-lg">
                   {podiumReady ? '🏆 Pódio completo' : '🏁 Chegada'}
                 </h3>
                 {!podiumReady ? (
