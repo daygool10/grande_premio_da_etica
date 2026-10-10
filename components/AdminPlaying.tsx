@@ -74,58 +74,59 @@ export function AdminPlaying() {
   };
 
   return (
-    <div className="min-h-screen p-4 bg-[#1a1a2e]">
-      <div className="mx-auto w-full max-w-[1800px]">
+    <main className="min-h-screen overflow-x-hidden bg-[#1a1a2e] p-3 sm:p-5 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+      <div className="mx-auto flex w-full max-w-[2200px] flex-col gap-4 lg:h-full lg:gap-5">
         {/* Header */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="inline-block bg-red-600 px-3 py-1 rounded text-sm font-bold">F1</span>
-            <h2 className="text-lg font-bold sm:text-xl">Pergunta {(game?.current_question_index || 0) + 1}/{questionCount}</h2>
+            <span className="inline-block rounded bg-red-600 px-3 py-1 text-base font-bold">F1</span>
+            <h2 className="text-xl font-bold sm:text-2xl">Pergunta {(game?.current_question_index || 0) + 1}/{questionCount}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+            <span className={`rounded-full px-3 py-1 text-base font-bold ${
               game?.question_revealed ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white'
             }`}>
               {game?.question_revealed ? '✅ Resposta Revelada' : `⏳ ${answeredCount}/${eligiblePlayers.length} responderam`}
             </span>
-            <span className="text-gray-400 text-sm">Código: <span className="text-white font-mono font-bold">{game?.game_code}</span></span>
+            <span className="text-base text-gray-400">Código: <span className="font-mono font-bold text-white">{game?.game_code}</span></span>
           </div>
-        </div>
+        </header>
 
-        <section className="mb-6 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 border-2 border-gray-700 rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-4">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch xl:gap-5">
+          {/* Race Board */}
+          <section className="order-1 flex min-w-0 flex-col justify-center rounded-2xl border-2 border-gray-700 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 p-3 sm:p-5 lg:order-2 lg:min-h-0">
+            <div className="mb-3 flex items-center gap-2 sm:mb-4">
               <span className="text-2xl">🏁</span>
-              <h3 className="text-lg font-black uppercase tracking-wider text-white">Tabuleiro da Corrida</h3>
-              <span className="text-gray-500 text-sm ml-auto">Tempo real</span>
+              <h3 className="text-lg font-black uppercase tracking-wider text-white sm:text-xl">Tabuleiro da Corrida</h3>
+              <span className="ml-auto text-sm text-gray-400 sm:text-base">Tempo real</span>
               <F1Semaphore status={podiumReady ? 'finished' : 'running'} />
             </div>
             <CircuitBoard players={players} boardSize={boardSize} />
-        </section>
+          </section>
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           {/* Question Section */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:min-h-0">
             {q && (
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-6">
-                <h3 className="text-red-400 font-bold mb-2 text-sm uppercase tracking-wider">
+              <div className="rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-5 lg:h-full lg:overflow-y-auto">
+                <h3 className="mb-2 text-base font-bold uppercase tracking-wider text-red-400 sm:text-lg">
                   📋 {q.title}
                 </h3>
-                <p className="text-gray-300 leading-relaxed text-sm mb-6">
+                <p className="mb-4 text-base leading-relaxed text-gray-200 sm:mb-5">
                   {q.scenario}
                 </p>
 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {q.options.map((opt, i) => (
                     <div
                       key={i}
-                      className={`p-4 rounded-lg border transition-all ${
+                      className={`rounded-lg border p-3 transition-all sm:p-4 ${
                         game?.question_revealed && opt.isCorrect
                           ? 'bg-green-900/30 border-green-500/50'
                           : 'bg-gray-700/30 border-gray-600/50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                        <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-base font-bold ${
                           game?.question_revealed && opt.isCorrect
                             ? 'bg-green-600 text-white'
                             : 'bg-gray-600 text-gray-300'
@@ -133,22 +134,22 @@ export function AdminPlaying() {
                           {String.fromCharCode(65 + i)}
                         </span>
                         <div className="flex-1">
-                          <p className="text-sm text-gray-200">{opt.text}</p>
+                          <p className="text-base text-gray-100">{opt.text}</p>
                         </div>
                         {game?.question_revealed && opt.isCorrect && (
-                          <span className="text-green-400 text-xl">✓</span>
+                          <span className="text-2xl text-green-400">✓</span>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                <div className="mt-4 flex gap-3 sm:mt-5">
                   {!game?.question_revealed ? (
                     <button
                       onClick={handleRevealAnswer}
                       disabled={!allPlayersAnswered || isRevealing}
-                      className="flex-1 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl text-lg transition-all"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-700 px-4 py-3 text-lg font-bold text-white transition-all hover:from-yellow-500 hover:to-yellow-600 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 sm:text-xl"
                     >
                       {isRevealing ? 'Revelando...' : '🔓 Revelar Resposta'}
                     </button>
@@ -156,49 +157,49 @@ export function AdminPlaying() {
                     <button
                       onClick={handleNextQuestion}
                       disabled={isAdvancing}
-                      className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl text-lg transition-all"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-lg font-bold text-white transition-all hover:from-blue-500 hover:to-blue-600 sm:text-xl"
                     >
                       {isAdvancing ? 'Avançando...' : '➡️ Próxima Pergunta'}
                     </button>
                   )}
                 </div>
                 {!game?.question_revealed && eligiblePlayers.length === 0 && (
-                  <p className="mt-3 text-center text-sm text-gray-400">
+                  <p className="mt-3 text-center text-base text-gray-300">
                     Nenhuma dupla precisa responder esta pergunta.
                   </p>
                 )}
                 {!game?.question_revealed && eligiblePlayers.length > 0 && !allPlayersAnswered && (
-                  <p className="mt-3 text-center text-sm text-gray-400">
+                  <p className="mt-3 text-center text-base text-gray-300">
                     Aguardando todas as duplas elegíveis responderem ({answeredCount}/{eligiblePlayers.length}).
                   </p>
                 )}
                 {revealError && (
-                  <p role="alert" className="mt-3 text-center text-sm text-red-400">{revealError}</p>
+                  <p role="alert" className="mt-3 text-center text-base text-red-400">{revealError}</p>
                 )}
               </div>
             )}
           </div>
 
           {/* Teams Status Panel */}
-          <div className="space-y-4">
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">👥 Equipes Conectadas</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="order-3 flex min-w-0 flex-col gap-4 lg:min-h-0">
+            <div className="flex flex-col rounded-xl border border-gray-700 bg-gray-800/50 p-4 lg:min-h-0 lg:flex-1">
+              <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-gray-300 sm:text-lg">👥 Equipes Conectadas</h3>
+              <div className="space-y-2 overflow-y-auto lg:min-h-0 lg:flex-1">
                 {players.map(p => {
                   const hasAnswered = answers.some(a => a.player_id === p.id && a.question_index === game?.current_question_index);
                   return (
-                    <div key={p.id} className="flex items-center gap-3 bg-gray-700/30 rounded-lg p-3">
+                    <div key={p.id} className="flex items-center gap-3 rounded-lg bg-gray-700/30 p-3">
                       <div 
-                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        className="h-4 w-4 flex-shrink-0 rounded-full"
                         style={{ backgroundColor: TEAM_COLORS[p.f1_team] }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm truncate">{p.team_name}</p>
-                        <p className="text-gray-400 text-xs">{p.f1_team}</p>
+                        <p className="truncate text-base font-bold">{p.team_name}</p>
+                        <p className="text-sm text-gray-300">{p.f1_team}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold">{p.position}/{boardSize}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        <p className="text-base font-bold">{p.position}/{boardSize}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-sm ${
                           hasAnswered ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
                         }`}>
                           {p.position >= boardSize
@@ -217,11 +218,11 @@ export function AdminPlaying() {
             {/* Podium Preview */}
             {finishedPlayers.length > 0 && (
               <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3 uppercase tracking-wider">
+                <h3 className="mb-3 text-base font-bold uppercase tracking-wider text-yellow-400">
                   {podiumReady ? '🏆 Pódio completo' : '🏁 Chegada'}
                 </h3>
                 {!podiumReady ? (
-                  <p className="text-sm text-gray-300">
+                  <p className="text-base text-gray-200">
                     {orderedFinishers[0].team_name} está em 1º lugar. O pódio será gerado quando mais {podiumSize - finishedPlayers.length} equipe
                     {podiumSize - finishedPlayers.length === 1 ? '' : 's'} cruzar
                     {podiumSize - finishedPlayers.length === 1 ? '' : 'em'} a linha de chegada.
@@ -232,7 +233,7 @@ export function AdminPlaying() {
                       <div key={p.id} className="flex items-center gap-2">
                         <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TEAM_COLORS[p.f1_team] }} />
-                        <span className="font-bold text-sm">{p.team_name}</span>
+                        <span className="text-base font-bold">{p.team_name}</span>
                       </div>
                     ))}
                   </div>
@@ -242,6 +243,6 @@ export function AdminPlaying() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
